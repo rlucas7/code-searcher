@@ -1,0 +1,21 @@
+# standard flask gitignore
+.venv/
+
+*.pyc
+__pycache__/
+
+instance/
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+dist/
+build/
+*.egg-info/
+
+
+# added stuff
+*bin*
+*lib*
+pyvenv.cfg
