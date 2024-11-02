@@ -1,4 +1,4 @@
-import sqlite3
+import sqlean as sqlite3
 from datetime import datetime
 
 import click
