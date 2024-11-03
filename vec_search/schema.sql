@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS user;
 DROP TABLE IF EXISTS post;
+DROP TABLE IF EXISTS vec_items;
 
 CREATE TABLE user (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -8,10 +9,13 @@ CREATE TABLE user (
 );
 
 CREATE TABLE post (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  author_id INTEGER NOT NULL,
-  created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  title TEXT NOT NULL,
-  body TEXT NOT NULL,
-  FOREIGN KEY (author_id) REFERENCES user (id)
+  id INTEGER PRIMARY KEY,
+  func_name TEXT NOT NULL,
+  path TEXT NOT NULL,
+  sha TEXT NOT NULL
+);
+
+CREATE virtual TABLE vec_items USING vec0(
+  rowid INTEGER PRIMARY KEY,
+  embedding FLOAT[768] distance_metric=cosine
 );

@@ -12,14 +12,13 @@
     <article class="post">
       <header>
         <div>
-          <h1>{{ post['title'] }}</h1>
-          <div class="about">by {{ post['username'] }} on {{ post['created'].strftime('%Y-%m-%d') }}</div>
+          <h1>{{ post['func_name'] }}</h1>
+          <div class="about">by {{ post['path'] }} on {{ post['sha'] }}</div>
         </div>
-        {% if g.user['id'] == post['author_id'] %}
+        {% if g.user['id'] %}
           <a class="action" href="{{ url_for('search.update', id=post['id']) }}">Edit</a>
         {% endif %}
-      </header>
-      <p class="body">{{ post['body'] }}</p>
+      </header>y
     </article>
     {% if not loop.last %}
       <hr>
