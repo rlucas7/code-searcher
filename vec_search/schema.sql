@@ -12,7 +12,9 @@ CREATE TABLE post (
   id INTEGER PRIMARY KEY,
   func_name TEXT NOT NULL,
   path TEXT NOT NULL,
-  sha TEXT NOT NULL
+  sha TEXT NOT NULL,
+  code TEXT NOT NULL,
+  doc TEXT NOT NULL
 );
 
 CREATE virtual TABLE vec_items USING vec0(

@@ -12,8 +12,9 @@ bp = Blueprint('search', __name__)
 @bp.route('/')
 def index():
     db = get_db()
+    # TODO: setup pagination
     posts = db.execute(
-        'SELECT func_name, path, sha FROM post limit 5'
+        'SELECT func_name, path, sha, code, doc FROM post limit 5'
     ).fetchall()
     print(len(posts))
     for p in posts:
