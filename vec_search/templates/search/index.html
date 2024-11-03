@@ -1,9 +1,14 @@
 {% extends 'base.html' %}
 
 {% block header %}
+  <label for="site-search">Search the repo:</label>
+  <form action="" method="GET">
+      <input type="search" id="site-search" name="q" />
+      <button>Search</button>
+  </form>
   <h1>{% block title %}Codes{% endblock %}</h1>
   {% if g.user %}
-    <a class="action" href="{{ url_for('search.create') }}">New</a>
+    <a class="action" href="{{ url_for('search.create') }}">create</a>
   {% endif %}
 {% endblock %}
 
@@ -15,6 +20,9 @@
           <h1>{{ post['func_name'] }}</h1>
           <div class="about">by {{ post['path'] }} on {{ post['sha'] }}</div>
         </div>
+        {% if post['distance'] %}
+	<p>distance {{ post['distance'] }} </p>
+        {% endif %}
         {% if post['id'] %}
           <a class="action" href="{{ url_for('search.update', id=post['id']) }}">detail</a>
         {% endif %}
