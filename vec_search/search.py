@@ -52,7 +52,7 @@ def index():
                 distance
               from vec_items
               where embedding match ?
-                and k = 5
+                and k = 10
             )
             select
               func_name,
