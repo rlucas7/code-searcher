@@ -18,4 +18,10 @@ build/
 # added stuff
 *bin*
 *lib*
+*var*
+*share*
 pyvenv.cfg
+
+# a small sample of this file is committed to repo so that it is self
+# contained but it is not the entire repo embedded
+collections-c-embeds.jsonl
