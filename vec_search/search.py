@@ -75,6 +75,7 @@ def index():
         raise ValueError("should not ever enter this branch")
 
 
+# NOTE: this is not fully implemented
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
@@ -118,6 +119,7 @@ def get_post(id, check_author=True):
     return post
 
 
+# NOTE: this is not fully implemented
 @bp.route('/<int:id>/update', methods=('GET', 'POST'))
 @login_required
 def update(id):

@@ -7,10 +7,9 @@ import click
 import jsonlines
 from flask import current_app, g
 
+# HACK
+from vec_search.config import _SQLITE_VEC_DLL_PATH, _JSONL_LOCAL_FILE
 
-#TODO: put this into config and read via config parser
-_SQLITE_VEC_DDL_PATH = "/Users/rlucas/sqlite-ext/sqlite-vec/dist/vec0.dylib"
-_JSONL_LOCAL_FILE = "collections-c-embeds.jsonl"
 
 
 def get_db():
@@ -20,7 +19,7 @@ def get_db():
             detect_types=sqlite3.PARSE_DECLTYPES
         )
         g.db.enable_load_extension(True)
-        g.db.load_extension(_SQLITE_VEC_DDL_PATH)
+        g.db.load_extension(_SQLITE_VEC_DLL_PATH)
         sqlite_vec.load(g.db)
         g.db.enable_load_extension(False)
         g.db.row_factory = sqlite3.Row
@@ -70,7 +69,7 @@ def close_db(e=None):
 def init_db():
     db = get_db()
     db.enable_load_extension(True)
-    db.load_extension(_SQLITE_VEC_DDL_PATH)
+    db.load_extension(_SQLITE_VEC_DLL_PATH)
     sqlite_vec.load(g.db)
     db.enable_load_extension(False)
 
