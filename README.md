@@ -42,3 +42,9 @@ including the vector embeddings requires we install a few more ML dependencies.
 pip install numpy==1.24 torch transformers
 ```
 
+
+# execute searches locally
+
+If you execute searches locally you probably want to include your own
+index and not the current sampled jsonl file that contains only a few records
+and not a complete repo. This is to keep the size of the repo small.
