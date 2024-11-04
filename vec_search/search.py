@@ -9,12 +9,14 @@ from werkzeug.exceptions import abort
 from vec_search.auth import login_required
 from vec_search.db import get_db
 
+#HACK: for now hard codes the location of the config file for AI MODEL
+from vec_search.config import AI_MODEL as MODEL
+
 bp = Blueprint('search', __name__)
 
 
-_HF_MODEL = "microsoft/codebert-base-mlm"
-_MODEL = RobertaForMaskedLM.from_pretrained(_HF_MODEL)
-_TOKENIZER = RobertaTokenizer.from_pretrained(_HF_MODEL)
+_MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
+_TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
 
 
 # we hack the GET & disambiguate a search
