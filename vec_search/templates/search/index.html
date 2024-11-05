@@ -29,11 +29,11 @@
 	<div>
 		<details>
 			<summary>Doc</summary>
-			<p> {{post['doc']}} </p>
+			<pre><code> {{post['doc']}}</code> </pre>
 		</details>
 		<details>
 			<summary>Code</summary>
-			<p> {{post['code']}}</p>
+			<pre><code> {{post['code']}}</code></pre>
 		</details>
 	</div>
       </header>
@@ -43,3 +43,4 @@
     {% endif %}
   {% endfor %}
 {% endblock %}
+
