@@ -22,30 +22,25 @@ _TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
 # we hack the GET & disambiguate a search
 @bp.route('/', methods=["GET"])
 def index():
-    print(f"request.args: {request.args}")
+    db = get_db()
     if request.method == "GET" and request.args.get("q") is None:
-        db = get_db()
         # TODO: setup pagination
         posts = db.execute(
             'SELECT func_name, path, sha, code, doc FROM post limit 10'
         ).fetchall()
-        print(len(posts))
         return render_template('search/index.html', posts=posts)
     elif request.method == "GET":
         # load the LLM to embed the natural lang text to a vec
         q = request.args.get('q')
-        print(q)
-        # block of code to prepare query
+        # block of code to embed natural language query
         tokens = [_TOKENIZER.cls_token] + _TOKENIZER.tokenize(q) + [_TOKENIZER.eos_token]
         raw_token_ids = tensor(_TOKENIZER.convert_tokens_to_ids(tokens))
         tokens_ids = reshape(raw_token_ids, (1, len(raw_token_ids)))
         context_embeddings = _MODEL(tokens_ids, output_hidden_states=True)
         embeds = context_embeddings.hidden_states[-1].detach().numpy()[0, 0, :]
         embed = embeds.tolist()
-        print(embed[0:10], len(embed))
 
         # residual from copy paste
-        db = get_db()
         cur = db.cursor()
         vec_query = """
             with knn_matches as (
@@ -68,7 +63,7 @@ def index():
         """
         cur.execute(vec_query, [sqlite_vec.serialize_float32(embed)])
         posts = cur.fetchall()
-        print(f"length of embed-vectory search: {len(posts)}")
+        cur.close()
         return render_template('search/index.html', posts=posts)
 
     else:

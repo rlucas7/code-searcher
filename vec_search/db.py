@@ -23,46 +23,10 @@ def get_db():
         sqlite_vec.load(g.db)
         g.db.enable_load_extension(False)
         g.db.row_factory = sqlite3.Row
-
-        with current_app.open_resource('schema.sql') as f:
-            g.db.executescript(f.read().decode('utf8'))
-        # insert the vectors
-        DDL_vec_insert_cmd = """insert into vec_items(rowid, embedding)
-            values (?, ?)
-        """
-
-        # insert the content associated with vectors
-        DDL_content_insert_cmd = """ insert into post(id, func_name, path, sha, code, doc)
-            values (?, ?, ?, ?, ?, ?)
-        """
-        names = set()
-        with jsonlines.open(_JSONL_LOCAL_FILE) as reader:
-            for idx, obj in enumerate(reader, start=1):
-                jl = json.loads(obj)
-                if not jl['func_name'] in names:
-                    names.add(jl['func_name'])
-                    g.db.execute(DDL_vec_insert_cmd, [idx, sqlite_vec.serialize_float32(jl['embeddings'])])
-                    g.db.execute(DDL_content_insert_cmd, [idx, jl['func_name'], jl['path'], jl['sha'], jl['original_string'], jl['docstring']])
-                else:
-                    print(f"{idx}th record is a duplicate, at path: {jl['path']}, function name: {jl['func_name']}")
-
-    # now confirm the vectors are loaded to the sqlite db instance in flask
-    query = """select vec_to_json(vec_slice(embedding, 0, 8)) from vec_items limit 1"""
-    cur = g.db.cursor()
-    cur.execute(query)
-    all_rows = cur.fetchall()
-    for v in all_rows:
-        print(v[0])
-
-
-    ps = g.db.cursor().execute("select count(*) from post").fetchall()
-    print(f"total number of associated entires stored is: {ps[0][0]}")
-
     return g.db
 
 def close_db(e=None):
     db = g.pop('db', None)
-
     if db is not None:
         db.close()
 
@@ -99,6 +63,7 @@ def init_db():
                 db.execute(DDL_content_insert_cmd, [idx, jl['func_name'], jl['path'], jl['sha'], jl['original_string'], jl['docstring']])
             else:
                 print(f"{idx}th record is a duplicate, at path: {jl['path']}, function name: {jl['func_name']}")
+    db.commit()
 
     # now confirm the vectors are loaded to the sqlite db instance in flask
     query = """select vec_to_json(vec_slice(embedding, 0, 8)) from vec_items limit 10"""
@@ -129,13 +94,5 @@ sqlite3.register_converter(
 )
 
 def init_app(app):
-
-    #DDL_create_cmd = """create virtual table vec_items using
-    #    vec0(contents_embedding float[768] distance_metric=cosine)
-    #"""
-    #db_inst.execute(DDL_create_cmd)
-
-
-    # now the typical items...
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
