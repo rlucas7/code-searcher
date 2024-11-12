@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1>{% block title %}Inspect Post {{content['id']}} with {{content['type']}}{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+    <!-- this is the raw text including <script> ... </script>
+    so we include like this-this is how BertViz does it so we're doing it
+    -->
+    {{content['script'] }}
+{% endblock %}
