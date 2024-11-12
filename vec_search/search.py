@@ -2,9 +2,14 @@ import sqlite_vec
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for
 )
-from torch import tensor, reshape
+from torch import tensor, reshape, FloatTensor
 from transformers import RobertaTokenizer, RobertaForMaskedLM
 from werkzeug.exceptions import abort
+
+from bertviz.transformers_neuron_view import RobertaModel as RM, RobertaTokenizer as RT
+from bertviz.head_view import head_view
+from bertviz.neuron_view import show, get_attention
+from markupsafe import Markup
 
 from vec_search.auth import login_required
 from vec_search.db import get_db
@@ -57,12 +62,15 @@ def index():
               sha,
               code,
               doc,
-              knn_matches.distance as distance
+              knn_matches.distance as distance,
+              post.id as postid
             from knn_matches
             left join post on post.id = knn_matches.rowid
         """
         cur.execute(vec_query, [sqlite_vec.serialize_float32(embed)])
         posts = cur.fetchall()
+        for i in range(len(posts)):
+            posts[i].update({'search-query': q})
         cur.close()
         return render_template('search/index.html', posts=posts)
 
@@ -70,31 +78,50 @@ def index():
         raise ValueError("should not ever enter this branch")
 
 
-# NOTE: this is not fully implemented
-@bp.route('/create', methods=('GET', 'POST'))
-@login_required
-def create():
-    if request.method == 'POST':
-        title = request.form['title']
-        body = request.form['body']
-        error = None
+@bp.route('/detail', methods=['GET'])
+def detail():
+    entity_id = request.args.get('postid')
+    search_query = request.args.get('query')
+    cross_type = request.args.get('cross_type', "NL")
+    post = get_db().execute(
+        'SELECT p.id, code, doc'
+        ' FROM post p'
+        ' WHERE p.id = ?',
+        (entity_id,)
+    ).fetchone()
+    # Here we confirm the get params are passed
+    print(entity_id, ", ", search_query, ", ", post)
 
-        if not title:
-            error = 'Func_name is required.'
+    # Now we construct a string of the query + SERP to feed through the model
+    # and get the cross attentions (query -> SERP) for rendering visualiztion
+    # in the browser. This uses BertViz which relies on d3.js
+    model_type = 'roberta'
+    model_version = "roberta-base"
+    model = RM.from_pretrained(model_version, output_attentions=True)
+    tokenizer = RT.from_pretrained(model_version, do_lower_case=True)
+    sentence1 = search_query
+    # the viz tends to be too long for the screen with both NL + PL so we branch
+    if cross_type == "NL":
+        # NL = natural lang
+        sentence2 = post['doc']
+    elif cross_type == "PL":
+        sentence2 = post['code']
+    else:
+        raise ValueError("unsupported cross attention type requested")
+    # the head view is only impl for limitations of bertviz
+    attn_data = get_attention(model, 'roberta', tokenizer, sentence1, sentence2, include_queries_and_keys=False)
+    # annoyingly `tokens` seems is a required albeit redundant arg for head_view
+    # some hacky stuff to get things to match the signature of the `head_view()` function ...
+    tokens = attn_data['ba']['right_text'] + attn_data['ba']['left_text']
+    sentence_2_start = len(attn_data['ba']['right_text'])
+    attention = []
+    n = len(attn_data['all']['attn'])
+    for i in range(n):
+        attention.append(FloatTensor(attn_data['all']['attn'][i]).unsqueeze(0))
 
-        if error is not None:
-            flash(error)
-        else:
-            db = get_db()
-            db.execute(
-                'INSERT INTO post (func_name, path, sha)'
-                ' VALUES (?, ?, ?)',
-                (title, body, g.user['id'])
-            )
-            db.commit()
-            return redirect(url_for('search.index'))
-
-    return render_template('search/create.html')
+    ret_obj = head_view(attention, tokens, sentence_2_start, include_layers=[11], html_action = 'return')
+    content = {'script': Markup(ret_obj.data), 'id': post['id'], 'type': cross_type}
+    return render_template('search/detail.html', content=content)
 
 
 def get_post(id, check_author=True):

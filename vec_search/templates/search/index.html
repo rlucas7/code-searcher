@@ -7,9 +7,6 @@
       <button>Search</button>
   </form>
   <h1>{% block title %}Codes{% endblock %}</h1>
-  {% if g.user %}
-    <a class="action" href="{{ url_for('search.create') }}">create</a>
-  {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -24,17 +21,40 @@
 	<p>distance {{ (post['distance']*10000)|round|int }} </p>
         {% endif %}
         {% if post['id'] %}
-          <a class="action" href="{{ url_for('search.update', id=post['id']) }}">detail</a>
+          <a class="action" href="{{ url_for('search.detail', id=post['postid']) }}">detail</a>
         {% endif %}
-	<div>
-		<details>
-			<summary>Doc</summary>
-			<pre><code> {{post['doc']}}</code> </pre>
-		</details>
-		<details>
-			<summary>Code</summary>
-			<pre><code> {{post['code']}}</code></pre>
-		</details>
+        <div>
+        <details>
+            <summary>Doc</summary>
+        	<pre><code> {{post['doc']}}</code> </pre>
+                	<form action="{{ url_for('search.detail') }}"  method="GET">
+                	    <input type="text" id="qi-query" value="{{post['search-query']}}"
+                        	style = "display: none;" name="query"/>
+                		    <input type="text" id="qi-post-id" value="{{post['postid']}}"
+                			style = "display: none;" name="postid"
+                		    />
+                		    <input type="text" id="qi-cross-type" value="NL"
+                			style = "display: none;" name="cross_type"
+                		    />
+                		    <input type="submit" value="Inspect"/>
+                		</form>
+        </details>
+        <details>
+        	<summary>Code</summary>
+        	<pre><code> {{post['code']}}</code></pre>
+                		<form action="{{ url_for('search.detail') }}"  method="GET">
+                		    <input type="text" id="qi-query" value="{{post['search-query']}}"
+                			style = "display: none;" name="query"
+                		    />
+                		    <input type="text" id="qi-post-id" value="{{post['postid']}}"
+                			style = "display: none;" name="postid"
+                		    />
+                		    <input type="text" id="qi-cross-type" value="PL"
+                			style = "display: none;" name="cross_type"
+                		    />
+                		    <input type="submit" value="Inspect"/>
+                		</form>
+        </details>
 	</div>
       </header>
     </article>

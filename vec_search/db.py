@@ -11,6 +11,10 @@ from flask import current_app, g
 from vec_search.config import _SQLITE_VEC_DLL_PATH, _JSONL_LOCAL_FILE
 
 
+def dict_factory(cursor, row):
+    fields = [column[0] for column in cursor.description]
+    return {key: value for key, value in zip(fields, row)}
+
 
 def get_db():
     if 'db' not in g:
@@ -22,7 +26,8 @@ def get_db():
         g.db.load_extension(_SQLITE_VEC_DLL_PATH)
         sqlite_vec.load(g.db)
         g.db.enable_load_extension(False)
-        g.db.row_factory = sqlite3.Row
+        # NOTE: makes each row mutable, whereas  sqlite.db2.Row is not
+        g.db.row_factory = dict_factory
     return g.db
 
 def close_db(e=None):
