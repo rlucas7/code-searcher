@@ -67,17 +67,17 @@ and entity embeddings.
 
 Typical inspection workflow:
 
-[Listings](vec_search/images/listing_landing_page.png)
+![Listings](vec_search/images/listing_landing_page.png)
 Here you find the listings of all entries in your jsonl file
 in an arbitrary order because no search has been performed.
 Next use the search bar to enter a natural language search query.
 
-[SERP](vec_search/images/search_results.png)
+![SERP](vec_search/images/search_results.png)
 Here you will find the entities from your search
 in semantic distance, closest is first and then proceeds
 in ascending order.
 
-[Inspection](vec_search/images/query_result_inspection.png)
+![Inspection](vec_search/images/query_result_inspection.png)
 After clicking the inspect button you will be taken to a
 detail page where the dropdown menus provide a configurable
 view of the attention weights from the semantic code search.
