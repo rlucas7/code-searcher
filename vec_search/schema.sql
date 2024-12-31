@@ -1,6 +1,8 @@
 DROP TABLE IF EXISTS user;
 DROP TABLE IF EXISTS post;
 DROP TABLE IF EXISTS vec_items;
+DROP TABLE IF EXISTS queries;
+DROP TABLE IF EXISTS query_relevances;
 
 CREATE TABLE user (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,4 +22,19 @@ CREATE TABLE post (
 CREATE virtual TABLE vec_items USING vec0(
   rowid INTEGER PRIMARY KEY,
   embedding FLOAT[768] distance_metric=cosine
+);
+
+CREATE TABLE queries (
+  query_id INTEGER PRIMARY KEY,
+  query TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES user (id)
+);
+
+CREATE TABLE query_relevances (
+  query_id INTEGER NOT NULL,
+  post_id INTEGER NOT NULL,
+  relevance INTEGER NOT NULL,
+  rank INTEGER NOT NULL,
+  distance FLOAT NOT NULL
 );

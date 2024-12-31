@@ -1,5 +1,6 @@
 <!doctype html>
 <title>{% block title %}{% endblock %} - VecSearch</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <nav>
   <h1>Search source code using natural language and vector embeds</h1>
@@ -27,4 +28,49 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>
 	hljs.highlightAll();
+</script>
+
+<script>
+  // intent is for this to work solely for the postings to do relevance annotations
+  // from a human...
+  //TODO: move to a separate js module to include in static + make configurable...
+  function clickNSubmit(nodeId){
+    event.stopPropagation();
+    var T = document.getElementById(nodeId);
+    event => event.preventDefault();
+    // if the value in the html collection corresponds to "yes" but may not be
+    // checked, if so because we have only binary y/n, we know this must be "no"
+    // as the selection ...
+    let yesNo = T.children.namedItem("yes-no");
+    let relevance = yesNo.value === "yes" & !yesNo.checked ? "no" : yesNo.value;
+    let queryId = T.children.namedItem("query-id").value.split("+")[0];
+    let postId = T.children.namedItem("postid").value;
+    let distance = T.children.namedItem("distance").value;
+    let rank = T.children.namedItem("rank").value;
+    // the needed data for storage in db
+    relevance_obj = {
+      'relevance': relevance,
+      'distance': distance,
+      'post-id': postId,
+      'query-id': queryId,
+      'rank': rank
+    };
+    console.log(relevance_obj);
+    let qrel = new URLSearchParams(relevance_obj).toString()
+    let url = "http://127.0.0.1:5000/relevance?" + qrel;
+    console.log(url);
+    const request = new Request(url);
+    const response1 = fetch(request).then(result => result).then(data => console.log(data)).catch((err)=>console.log(err));
+    return false;
+  }
+</script>
+
+<script>
+  function clickNHide(nodeId) {
+    console.log("in clickNHide");
+    console.log(nodeId);
+    var T = document.getElementById(nodeId);
+    T.style.display = "none";
+    T.style.hidden = true;
+  }
 </script>

@@ -76,16 +76,23 @@ def init_db():
     cur.execute(query)
     all_rows = cur.fetchall()
     for v in all_rows:
-        print(v[0])
+        print(v)
 
     vals = cur.execute("select count(*) from vec_items").fetchall()
-    print(f"total number of vectors stored is: {vals[0][0]}")
+    print(f"total number of vectors stored is: {vals}")
     ps = cur.execute("select count(*) from post").fetchall()
-    print(f"total number of associated entries stored is: {ps[0][0]}")
+    print(f"total number of associated entries stored is: {ps}")
     one = cur.execute("select * from post limit 1").fetchall()
     for v in one:
         for idx, e in enumerate(v):
             print(idx, e)
+    # display to stdout the metadata for tables ...
+    one = cur.execute("SELECT * FROM sqlite_master WHERE type='table';").fetchall()
+    for v in one:
+        print(v)
+    cur.close()
+    db.close()
+
 
 @click.command('init-db')
 def init_db_command():
@@ -93,6 +100,10 @@ def init_db_command():
     init_db()
     click.echo('Initialized the database.')
 
+
+@click.command('init-search-storage')
+def init_search_storage():
+    pass
 
 sqlite3.register_converter(
     "timestamp", lambda v: datetime.fromisoformat(v.decode())
