@@ -1,3 +1,4 @@
+import csv
 import json
 import sqlean as sqlite3
 import sqlite_vec
@@ -6,6 +7,7 @@ from datetime import datetime
 import click
 import jsonlines
 from flask import current_app, g
+from pandas import read_csv
 
 # HACK
 from vec_search.config import _SQLITE_VEC_DLL_PATH, _JSONL_LOCAL_FILE
@@ -101,14 +103,55 @@ def init_db_command():
     click.echo('Initialized the database.')
 
 
-@click.command('init-search-storage')
-def init_search_storage():
-    pass
+@click.command('export-rad-to-csv')
+@click.argument('filename', type=click.Path(exists=False))
+def export_rad_to_csv(filename):
+    click.echo("Now processing")
+    click.echo(click.format_filename(filename))
+    db = sqlite3.connect(
+        current_app.config['DATABASE'],
+        detect_types=sqlite3.PARSE_DECLTYPES
+    )
+    db.row_factory = dict_factory
+    with open('vec_search/RAD.sql', 'r') as f:
+        query = f.read()
+    with open(filename, 'w', newline='\n') as csv_file:
+        fieldnames = ['query_id', 'post_id', 'user_id', 'relevances', 'rank', 'distance', 'query']
+        dw = csv.DictWriter(csv_file, delimiter='|', quotechar='[', fieldnames=fieldnames)
+        dw.writeheader()
+        for row in db.execute(query).fetchall():
+            dw.writerow(row)
+    click.echo(f"relevance results written to {click.format_filename(filename)}")
 
 sqlite3.register_converter(
     "timestamp", lambda v: datetime.fromisoformat(v.decode())
 )
 
+@click.command('gen-llm-rels')
+@click.argument('filename', type=click.Path(exists=True))
+@click.argument('dupstrat', type=str, default='takelast')
+def gen_llm_rels(filename, dupstrat):
+    ## NOTE:
+    # 1. this assumes a file in the format exported by the export click command above
+    # has been executed locally
+    # because there may be vacillation on the part of the human we need a
+    # converter for the read in the event that the relevance column has multiple
+    # entries, these are stored as `|0,1,...|` with additional binary relevances replacing
+    # the ellipses, if there are no relevances for a row then an error is thrown
+    # 2. if 'takelast' is set then pop method takes the last assigned relevance if there are > 1 for the record
+    if dupstrat == 'takelast':
+        func = lambda x: x.split(",").pop()
+    else:
+        raise ValueError("error: currently only 'takelast' is supported for dupstrat...")
+    convs = {"relevances": func}
+    # rows2skip = [4] # use with skiprows=
+    usecols = ["query_id", "post_id", "user_id", "rank", "distance", "query", "relevances"]
+    df = read_csv(filename, sep='|', header=0, converters=convs, usecols=usecols)
+    ## now the df has been read in and we want to generate the IR metrics...
+    print("all done...")
+
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
+    app.cli.add_command(export_rad_to_csv)
+    app.cli.add_command(gen_llm_rels)

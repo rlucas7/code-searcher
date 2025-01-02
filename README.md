@@ -116,10 +116,18 @@ the sqlite db for further processing.
 
 The sqlite db file is located in the `var/vec_search-instance/` directory or more generally in the path specified in the `config.py` module for the application.
 
-TODO: wrap the csv export workflow in a click cmd...
-
 To collect the data for the annotations:
 
+```bash
+flask --app vec_search export-rad-to-csv rad.csv
+```
+Note that this exports to a file in the current working directory named
+`rad.csv`. If you want a different filename this provide the alternate filename.
+If the file already exists in the working directory then an overwrite will occur.I
+
+## Manual workflow to generate relevance data
+
+The click command is similar to this workflow:
 ```bash
 # opens a REPL environment for sqlite3, if you modify the config.py then change the path
 sqlite3  var/vec_search-instance/vec_search.sqlite
@@ -130,19 +138,26 @@ sqlite3  var/vec_search-instance/vec_search.sqlite
 # output results to csv file
 .output relevance_annotation_details.csv
 
-# results
-SELECT qr.query_id,
-qr.post_id,
+# annotation results
+# we concatenate duplicates in a comma sep list (post_id, query_id, user_id)
+
+SELECT
 qr.query_id,
-qr.relevance,
+qr.post_id,
+q.user_id,
+GROUP_CONCAT(qr.relevance) AS relevances,
 qr.rank,
 qr.distance,
-q.query,
-q.user_id
+q.query
 FROM query_relevances AS qr
 INNER JOIN (
   SELECT query_id, query, user_id FROM queries
-) AS q ON qr.query_id = q.query_id;
+) AS q ON qr.query_id = q.query_id
+GROUP BY
+q.query_id,
+user_id,
+post_id
+;
 
 # exit sqlite REPL env
 .quit
@@ -158,7 +173,20 @@ to see the schema for all tables in the REPL environment:
 SELECT * FROM sqlite_master WHERE type='table';
 ```
 
-## LLM workflow (Umbrella style)
+# LLM annotation workflow (WIP-work in progress)
+
+A backend/batch workflow where relevances are assessed outside of a human workflow
+is the behavior currently supported.
+
+There are 2 prompts in the `llm_rel_gen.py` module.
+
+WIP:
+- A relevance generation engine, really a thing wrapper around llm clients.
+
+# Metrics generation (WIP-work in progress)
+
+WIP:
+- IR Retrieval metrics for the data once placed into pandas df(s).
 
 ## fine tune the model on custom data
 
