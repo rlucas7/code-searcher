@@ -183,10 +183,13 @@ There are 2 prompts in the `llm_rel_gen.py` module.
 WIP:
 - A relevance generation engine, really a thing wrapper around llm clients.
 
+For details cf. [this open issue](https://github.com/rlucas7/code-searcher/issues/6)
 # Metrics generation (WIP-work in progress)
 
 WIP:
 - IR Retrieval metrics for the data once placed into pandas df(s).
+
+For details cf. [this open issue](https://github.com/rlucas7/code-searcher/issues/7)
 
 ## fine tune the model on custom data
 
