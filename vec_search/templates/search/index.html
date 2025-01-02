@@ -4,7 +4,7 @@
   <label for="site-search">Search the repo:</label>
   <form action="" method="GET">
       <input type="search" id="site-search" name="q" />
-      <button>Search</button>
+      <!--button>Search</button-->
   </form>
   <h1>{% block title %}Codes{% endblock %}</h1>
 {% endblock %}
@@ -19,9 +19,6 @@
         </div>
         {% if post['distance'] %}
 	<p>distance {{ (post['distance']*10000)|round|int }} </p>
-        {% endif %}
-        {% if post['id'] %}
-          <a class="action" href="{{ url_for('search.detail', id=post['postid']) }}">detail</a>
         {% endif %}
         <div>
         <details>
@@ -56,6 +53,26 @@
                 		</form>
         </details>
 	</div>
+    {% if post['query-id'] %}
+    <!-- note this makes radio button clicks trigger too but for now get it to work-->
+    <form id="query-id-{{post['query-id']}}" onclick="clickNHide(this.id)">
+      <fieldset> <!--user relevance input -->
+        <legend>Relevant?:</legend>
+        <div id="query-id-radio-{{post['query-id']}}" onclick="clickNSubmit(this.id)">
+          <input type="radio" name="yes-no" value="yes"/>
+          <label for="yes">Yes</label>
+          <input type="radio" name="yes-no"/ value="no">
+          <label for="no">No</label>
+          <!--not displayed/hidden because we usually do not want the human to edit these values -->
+          <input type="text" name="distance" style = "display: none;" value="{{post['distance']}}"/>
+          <input type="text" name="postid" style = "display: none;" value="{{post['postid']}}"/>
+          <input type="text" name="query-id" style = "display: none;" value="{{post['query-id']}}"/>
+          <input type="text" name="rank" style = "display: none;" value="{{post['rank']}}"/>
+        </div>
+     </fieldset>
+      <input type="button" value="done?"/>
+    </form>
+  {% endif %}
       </header>
     </article>
     {% if not loop.last %}

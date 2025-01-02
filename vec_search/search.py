@@ -34,9 +34,15 @@ def index():
             'SELECT func_name, path, sha, code, doc FROM post limit 10'
         ).fetchall()
         return render_template('search/index.html', posts=posts)
-    elif request.method == "GET":
+    elif request.method == "GET" and request.args.get("q") is not None:
         # load the LLM to embed the natural lang text to a vec
         q = request.args.get('q')
+        if g.user is not None:
+            # if user is logged in then record the query to query table
+            print(q, type(q), g.user['id'], "writing query to query table")
+            SAVE_QUERY_CMD = 'INSERT INTO queries(query, user_id) values (?, ?)'
+            db.execute(SAVE_QUERY_CMD, [q, g.user['id']])
+            db.commit()
         # block of code to embed natural language query
         tokens = [_TOKENIZER.cls_token] + _TOKENIZER.tokenize(q) + [_TOKENIZER.eos_token]
         raw_token_ids = tensor(_TOKENIZER.convert_tokens_to_ids(tokens))
@@ -44,8 +50,7 @@ def index():
         context_embeddings = _MODEL(tokens_ids, output_hidden_states=True)
         embeds = context_embeddings.hidden_states[-1].detach().numpy()[0, 0, :]
         embed = embeds.tolist()
-
-        # residual from copy paste
+        # find matches
         cur = db.cursor()
         vec_query = """
             with knn_matches as (
@@ -67,13 +72,17 @@ def index():
             from knn_matches
             left join post on post.id = knn_matches.rowid
         """
+        # grab the query id to keep the ids client unique
+        for row in db.execute("SELECT last_insert_rowid()").fetchall():
+            query_id = row['last_insert_rowid()']
         cur.execute(vec_query, [sqlite_vec.serialize_float32(embed)])
         posts = cur.fetchall()
         for i in range(len(posts)):
             posts[i].update({'search-query': q})
+            if g.user and q:
+                posts[i].update({'query-id': str(query_id) + f"+post-num-{i}", 'rank': str(i)})
         cur.close()
         return render_template('search/index.html', posts=posts)
-
     else:
         raise ValueError("should not ever enter this branch")
 
@@ -89,12 +98,9 @@ def detail():
         ' WHERE p.id = ?',
         (entity_id,)
     ).fetchone()
-    # Here we confirm the get params are passed
-    print(entity_id, ", ", search_query, ", ", post)
-
-    # Now we construct a string of the query + SERP to feed through the model
-    # and get the cross attentions (query -> SERP) for rendering visualiztion
-    # in the browser. This uses BertViz which relies on d3.js
+    # Now we construct a string of the query + post-id to feed through the model
+    # and get the cross attentions (query -> post-id) for rendering visualiztion
+    # in the browser. This uses BertViz-which relies on d3.js
     model_type = 'roberta'
     model_version = "roberta-base"
     model = RM.from_pretrained(model_version, output_attentions=True)
@@ -123,6 +129,35 @@ def detail():
     content = {'script': Markup(ret_obj.data), 'id': post['id'], 'type': cross_type}
     return render_template('search/detail.html', content=content)
 
+
+# code for relevance assessment workflow
+@bp.route('/relevance', methods=['GET'])
+def relevance():
+    db = get_db()
+    print("in relevance route ...")
+    post_id  = int(request.args.get("post-id"))
+    query_id = int(request.args.get("query-id"))
+    rel = 1 if request.args.get("relevance") == "yes" else 0
+    rank = int(request.args.get("rank"))
+    dist = float(request.args.get("distance"))
+    rel_record = [post_id, query_id, rel, rank, dist]
+    print("before relevance insert")
+    for row in db.execute("SELECT * FROM query_relevances").fetchall():
+        print(row.keys())
+    # store the relevance data ...
+    # NOTE: the relevance table has no constraint on (post_id, query_id)
+    # being unique (to not break workflow of human relevance change yes->no or vice versa)
+    # however when making a final dataset you would likely want to make
+    # (post_id, query_id) unique as the primary key...
+    SAVE_RELEVANCE_CMD = 'INSERT INTO query_relevances(post_id, query_id, relevance, rank, distance) values (?, ?, ?, ?, ?)'
+    db.execute(SAVE_RELEVANCE_CMD, rel_record)
+    db.commit()
+    print("after relevance insert")
+    for row in db.execute("select * from query_relevances").fetchall():
+        print(row)
+    # NOTE: we expect no returning content from this endpoint but we do
+    # send back a simple status to ACK ...
+    return {'status': 'ok'}
 
 def get_post(id, check_author=True):
     post = get_db().execute(
