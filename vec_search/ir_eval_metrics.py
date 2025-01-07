@@ -18,6 +18,7 @@ ii. Spearman Correlation
 iii. Kendall Tau
 iv. Mean ave Precision@k
 """
+from itertools import accumulate
 from typing import Union
 
 from scipy.stats import spearmanr, kendalltau
@@ -83,10 +84,32 @@ def mean_ave_prec(df: DataFrame, k: int=10) -> dict[str, float]:
     """
     column_names = ['llm_rel_score', 'relevances', 'query_id', 'rank']
     # `grp` here is the query id and `adf` is the dataframe
-    actuals, predicteds = [], []
+    num_queries = 0.0
+    # TODO: remove this `k` const and make in config
+    map_at_k = 0.0
+    offset = 1
     for grp, adf in df[column_names].groupby('query_id'):
-        print("\n\n", grp, "\n\n")
-        breakpoint()
+        num_queries += 1.0
+        print("\n\n", grp, "\n\n", adf)
+        # converts ranks to a list-the ranks may have holes
+        ranks = adf['rank'].values.tolist()
+        relevances = adf['relevances'].values.tolist()
+        rks = [0] * k
+        rels = [0] * k
+        # ranks are starting from 0, 1, ...
+        for idx, r in enumerate(ranks):
+            if r < k:
+                rks[r] = 1 / (r+offset)
+                if relevances[idx] == 1:
+                    rels[r] = 1
+        # these are the human rels
+        csum_rels = list(accumulate(rels))
+        num_possible = csum_rels[-1] # total # of relevances
+        prec_at_i = [csum_rels[idx]*rks[idx]*rels[idx] for idx in range(k)]
+        ave_prec = sum(prec_at_i) / num_possible if num_possible > 0 else 0.0
+        map_at_k += ave_prec
+    # if there are no queries we should get 0.0
+    return {'map_at_k': map_at_k / max(num_queries, 1)}
 
 
 def calc_ir_metrics(df: DataFrame, functions: list[callable]=[]) -> dict[str, float]:
@@ -102,7 +125,7 @@ def calc_ir_metrics(df: DataFrame, functions: list[callable]=[]) -> dict[str, fl
         dict[str, float]: A dictionary of the calculated metrics.
     """
     stats = {}
-    funcs = [cohen_kappa, spearman_corr, kendall_tau]
+    funcs = [cohen_kappa, spearman_corr, kendall_tau, mean_ave_prec]
     if functions:
         funcs.extend(functions)
     for func in funcs:
@@ -112,18 +135,28 @@ def calc_ir_metrics(df: DataFrame, functions: list[callable]=[]) -> dict[str, fl
 if __name__ == "__main__":
     import unittest
 
-    # TODO: add pytest to the dependencies and use the annotation there
-    #  to simplify the manual looping in these test cases...
     class TestMeanAveragePrecision(unittest.TestCase):
-        def test_mapk_no_correct(self):
-            pass
+        def test_mapk_no_correct_should_be_0(self):
+            df = DataFrame({'relevances': [0,0,0,0],
+                            'query_id': [1,1,1,1],
+                            'rank': [0,1,2,3],
+                            'llm_rel_score': [0,0,0,0]})
+            assert mean_ave_prec(df)['map_at_k'] == 0.0
 
         def test_mapk_one_correct_equals_reciprocal_rank(self):
-            pass
+            df = DataFrame({'relevances': [0,0,1,0],
+                            'query_id': [1,1,1,1],
+                            'rank': [0,1,2,3],
+                            'llm_rel_score': [0,0,0,0]})
+            assert mean_ave_prec(df)['map_at_k'] == 1/3
 
         def test_mapk_more_than_one_correct(self):
-            pass
-
+            df = DataFrame({'relevances': [1,0,1,0],
+                            'query_id': [1,1,1,1],
+                            'rank': [0,1,2,3],
+                            'llm_rel_score': [0,0,0,0]})
+            # Note the 3rd entry must have a numerator of 2
+            assert mean_ave_prec(df)['map_at_k'] == (1.+2. / 3.)/2.
     
     # the main method here invokes discovery, execution, etc.
     unittest.main()
