@@ -2,16 +2,17 @@ import csv
 import json
 import sqlean as sqlite3
 import sqlite_vec
+from collections import defaultdict
 from datetime import datetime
 
 import click
 import jsonlines
 from flask import current_app, g
-from pandas import read_csv
+from pandas import read_csv, DataFrame, concat
 
 # HACK
 from vec_search.config import _SQLITE_VEC_DLL_PATH, _JSONL_LOCAL_FILE
-
+from .llm_rel_gen import LLMRelAssessor, Prompt, _umb_promt
 
 def dict_factory(cursor, row):
     fields = [column[0] for column in cursor.description]
@@ -116,8 +117,8 @@ def export_rad_to_csv(filename):
     with open('vec_search/RAD.sql', 'r') as f:
         query = f.read()
     with open(filename, 'w', newline='\n') as csv_file:
-        fieldnames = ['query_id', 'post_id', 'user_id', 'relevances', 'rank', 'distance', 'query']
-        dw = csv.DictWriter(csv_file, delimiter='|', quotechar='[', fieldnames=fieldnames)
+        fieldnames = ['query_id', 'post_id', 'user_id', 'relevances', 'rank', 'distance', 'query', 'doc', 'code']
+        dw = csv.DictWriter(csv_file, delimiter='|', quotechar='"', fieldnames=fieldnames, lineterminator='\r\n')
         dw.writeheader()
         for row in db.execute(query).fetchall():
             dw.writerow(row)
@@ -129,25 +130,47 @@ sqlite3.register_converter(
 
 @click.command('gen-llm-rels')
 @click.argument('filename', type=click.Path(exists=True))
+@click.argument('output_filename', type=click.Path(exists=False))
+@click.argument('llm_model', type=str, default='openai')
 @click.argument('dupstrat', type=str, default='takelast')
-def gen_llm_rels(filename, dupstrat):
+def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
     ## NOTE:
     # 1. this assumes a file in the format exported by the export click command above
     # has been executed locally
-    # because there may be vacillation on the part of the human we need a
-    # converter for the read in the event that the relevance column has multiple
-    # entries, these are stored as `|0,1,...|` with additional binary relevances replacing
-    # the ellipses, if there are no relevances for a row then an error is thrown
-    # 2. if 'takelast' is set then pop method takes the last assigned relevance if there are > 1 for the record
+    # because there may be vacillation by the human the relevance column may have multiple
+    # entries, these are stored as `|0,1,...|`
     if dupstrat == 'takelast':
+        # NOTE: you may want to vary duplicate handling strategies here
         func = lambda x: x.split(",").pop()
     else:
         raise ValueError("error: currently only 'takelast' is supported for dupstrat...")
     convs = {"relevances": func}
     # rows2skip = [4] # use with skiprows=
-    usecols = ["query_id", "post_id", "user_id", "rank", "distance", "query", "relevances"]
+    usecols = ["query_id", "post_id", "user_id", "relevances", "rank", "distance", "query", "doc", "code"]
     df = read_csv(filename, sep='|', header=0, converters=convs, usecols=usecols)
-    ## now the df has been read in and we want to generate the IR metrics...
+    click.echo(df.head())
+    click.echo(df.shape)
+    prompt = Prompt(_umb_promt)
+    llm_rel = LLMRelAssessor(prompt=prompt, model_name=llm_model)
+    # OPTIONAL-TODO: refactor to `df.apply()` if perf becomes an issue ...
+    # NOTE: if you switch passage with, say 'ok?' the returned score flips 0 -> 3...
+    ## generate the llm relevance determinations
+    llm_gen_data = defaultdict(list)
+    for index, row in df.iterrows():
+        # access of all entries follows via column name as key
+        query = row['query']
+        passage = row['doc'] + "\n\n\n" + row['query']
+        tp = {'query': query, 'passage': passage}
+        resp = llm_rel.generate_rel(template_params=tp, parse=True)
+        # print('idx: ', index, 'resp: ', resp['message'], 'usage: ', resp['usage'])
+        for key, value in resp.items():
+            llm_gen_data[key].append(value)
+    llm_gen_df = DataFrame(llm_gen_data)
+    c_df = concat([llm_gen_df, df], axis=1)
+    # extracts the actual score from the string which is expected as `##final score: {int}"`
+    breakpoint()
+    c_df['llm_rel_score'] = c_df['message'].str.split(':').apply(lambda x: int(x[1].strip()))
+    c_df.to_csv(output_filename)
     print("all done...")
 
 def init_app(app):

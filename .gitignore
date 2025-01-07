@@ -25,3 +25,6 @@ pyvenv.cfg
 # a small sample of this file is committed to repo so that it is self
 # contained but it is not the entire repo embedded
 collections-c-embeds.jsonl
+
+# a shell file to store env vars e.g. OPEN_AI_API_KEY, etc...
+envvars.sh

@@ -6,6 +6,11 @@ python3 -m venv .
 . bin/activate
 pip install sqlite-vec sqlean.py flask click jsonlines
 ```
+or if you want to use the `requirements.txt` file do
+```bash
+python3 -m pip install -r requirements.txt
+```
+instead of the `pip install ...` line.
 
 ## initialize the db
 
@@ -176,12 +181,28 @@ SELECT * FROM sqlite_master WHERE type='table';
 # LLM annotation workflow (WIP-work in progress)
 
 A backend/batch workflow where relevances are assessed outside of a human workflow
-is the behavior currently supported.
+is the behavior currently supported. Assuming in the previous step you wrote the human generated
+annotations to the file `rad.csv` and there is *no* file in the current working directory named
+`llm_gen_rel.csv` then run:
 
-There are 2 prompts in the `llm_rel_gen.py` module.
+```bash
+flask --app vec_search gen-llm-rels rad.csv llm_gen_rel.csv
+```
+and you will find the generated llm relevances in the csv file along with the data from `rad.csv`
+and other llm client metadata, like e.g. token usage, etc.
 
-WIP:
-- A relevance generation engine, really a thing wrapper around llm clients.
+In general the argments for `gen-llm-rels` command look like:
+
+```bash
+flask --app vec_search gen-llm-rels <input-csv> <output-csv> <llm-model-name> <dup-strategy>
+```
+
+The defaults for the last 2 are `'openai'` and `'takelast'`.
+
+There are 2 prompts in the `llm_rel_gen.py` module, the default is to use the
+umbrella prompt.
+
+TODO: add support for other prompt via click.
 
 For details cf. [this open issue](https://github.com/rlucas7/code-searcher/issues/6)
 # Metrics generation (WIP-work in progress)
