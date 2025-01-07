@@ -10,9 +10,13 @@ import jsonlines
 from flask import current_app, g
 from pandas import read_csv, DataFrame, concat
 
+
+
 # HACK
 from vec_search.config import _SQLITE_VEC_DLL_PATH, _JSONL_LOCAL_FILE
 from .llm_rel_gen import LLMRelAssessor, Prompt, _umb_promt
+from .ir_eval_metrics import calc_ir_metrics
+
 
 def dict_factory(cursor, row):
     fields = [column[0] for column in cursor.description]
@@ -173,8 +177,20 @@ def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
     c_df.to_csv(output_filename)
     print("all done...")
 
+@click.command('gen-ir-metrics')
+@click.argument('filename', type=click.Path(exists=True))
+def gen_ir_metrics(filename):
+    # we assume input is the output of `gen-llm-rels`
+    df = read_csv(filename)
+    stats = calc_ir_metrics(df)
+    # print all the metrics
+    for k, v in stats.items():
+        print(f"{k}: {v}")
+
+
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
     app.cli.add_command(export_rad_to_csv)
     app.cli.add_command(gen_llm_rels)
+    app.cli.add_command(gen_ir_metrics)
