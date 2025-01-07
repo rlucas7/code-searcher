@@ -70,66 +70,10 @@ def kendall_tau(df: DataFrame) -> dict[str, float]:
     return {'Kendall-tau': k_tau, 'Kendall-p-value': k_pv}
 
 
-def _apk(actual, predicted, k=10):
-    """
-    Computes the average precision at k.
-
-    This function computes the average prescision at k between two lists of
-    items.
-
-    Args:
-        actual : list
-                 A list of elements that are to be predicted (order doesn't matter)
-        predicted : list
-                    A list of predicted elements (order does matter)
-        k : int, optional
-            The maximum number of predicted elements, 10 is the default.
-
-    Returns:
-        score : dict[str, float]
-                The average precision at k over the input lists.
-    """
-    if len(predicted)>k:
-        predicted = predicted[:k]
-    score = 0.0
-    num_hits = 0.0
-    for i,p in enumerate(predicted):
-        if p in actual and p not in predicted[:i]:
-            num_hits += 1.0
-            score += num_hits / (i+1.0)
-    if not actual:
-        return 0.0
-    return {'apk' : score / min(len(actual), k)}
-
-def _mapk(actual, predicted, k=10):
-    """
-    Computes the mean average precision at k.
-
-    This is an internal function-do not use.
-
-    This function computes the mean average prescision at k between two lists
-    of lists of items.
-
-    Args:
-        actual : list
-                 A list of lists of elements that are to be predicted
-                 (order doesn't matter in the lists)
-        predicted : list
-                    A list of lists of predicted elements
-                    (order matters in the lists)
-        k : int, optional
-            The maximum number of predicted elements, 10 is the default.
-
-    Returns:
-        score : dict[str, float]
-                The mean average precision at k over the input lists
-    """
-    assert len(actual) == len(predicted), "error: len(actual) != len(predicted)..."
-    return sum([_apk(a,p,k)['apk'] for a,p in zip(actual, predicted)]) / len(actual)
-
 def mean_ave_prec(df: DataFrame, k: int=10) -> dict[str, float]:
     """ Computes the mean average precision at k.
 
+    cf. https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision
     Args:
         df (DataFrame): _description_
         k (int, optional): _description_. Defaults to 10.
@@ -142,7 +86,8 @@ def mean_ave_prec(df: DataFrame, k: int=10) -> dict[str, float]:
     actuals, predicteds = [], []
     for grp, adf in df[column_names].groupby('query_id'):
         print("\n\n", grp, "\n\n")
-        adf[]
+        breakpoint()
+
 
 def calc_ir_metrics(df: DataFrame, functions: list[callable]=[]) -> dict[str, float]:
     """A wrapper around the metrics supported by the module.
@@ -162,7 +107,6 @@ def calc_ir_metrics(df: DataFrame, functions: list[callable]=[]) -> dict[str, fl
         funcs.extend(functions)
     for func in funcs:
         stats.update(func(df))
-    breakpoint()
     return stats
 
 if __name__ == "__main__":
@@ -170,26 +114,16 @@ if __name__ == "__main__":
 
     # TODO: add pytest to the dependencies and use the annotation there
     #  to simplify the manual looping in these test cases...
-    class TestAveragePrecision(unittest.TestCase):
-        def test_apk(self):
-            apk = _apk(range(1,6),[6,4,7,1,2], 2)
-            self.assertAlmostEqual(apk['apk'], 0.25)
-            apk = _apk(range(1,6),[1,1,1,1,1], 5)
-            self.assertAlmostEqual(apk['apk'], 0.2)
-            predicted = list(range(1,21))
-            predicted.extend(range(200,600))
-            apk = _apk(range(1,100),predicted, 20)
-            self.assertAlmostEqual(apk['apk'], 1.0)
+    class TestMeanAveragePrecision(unittest.TestCase):
+        def test_mapk_no_correct(self):
+            pass
 
-        def test_mapk(self):
-            self.assertAlmostEqual(_mapk([range(1,5)],[range(1,5)],3), 1.0)
-            # can have multiple lists via nesting...
-            self.assertAlmostEqual(_mapk([[1,3,4],[1,2,4],[1,3]],
-                [range(1,6),range(1,6),range(1,6)], 3), 0.685185185185185)
-            self.assertAlmostEqual(_mapk([range(1,6),range(1,6)],
-                [[6,4,7,1,2],[1,1,1,1,1]], 5), 0.26)
-            self.assertAlmostEqual(_mapk([[1,3],[1,2,3],[1,2,3]],
-                [range(1,6),[1,1,1],[1,2,1]], 3), 11.0/18)
+        def test_mapk_one_correct_equals_reciprocal_rank(self):
+            pass
+
+        def test_mapk_more_than_one_correct(self):
+            pass
+
     
     # the main method here invokes discovery, execution, etc.
     unittest.main()
