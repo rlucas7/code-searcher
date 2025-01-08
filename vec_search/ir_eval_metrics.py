@@ -21,7 +21,7 @@ iv. Mean ave Precision@k
 from itertools import accumulate
 from typing import Union
 
-from scipy.stats import spearmanr, kendalltau
+from scipy.stats import spearmanr, kendalltau, geom
 from pandas import DataFrame, crosstab
 
 
@@ -142,6 +142,12 @@ def rank_biased_overlap(df: DataFrame, k: int = 10, p: float =0.1) -> dict[str, 
     # `grp` is the query_id and `adf` is the data frame for the group
     num_queries = 0
     rbo = 0.0
+    # NOTE: scipy.stats.geom has a reverse def of p, 1-p as compared to the RBO paper
+    # in scipy the pmf is: `(1-p)^{k-1} p`` for k >= 1 whereas in the RBO paper the defn
+    # is `w_d = (1-p)p^{k-1}`` so we swap p, with q = 1 - p
+    persistence_prob =  1 - p
+    g = geom(p = persistence_prob)
+    rbo = 0.0
     for grp, adf in df[column_names].groupby('query_id'):
         # note that the ranks are sparse so we need to densify them for each query
         num_queries += 1
@@ -152,6 +158,7 @@ def rank_biased_overlap(df: DataFrame, k: int = 10, p: float =0.1) -> dict[str, 
         lrel = adf['llm_rel_score'].values.tolist()
         # NOTE: the rob stat needs to start at 0 for each query
         rbo_stat = 0.0
+        # the index in prefix overlap is offset by -1. e.g. `0 <= index < k`
         prefix_overlap = [0] * k
         for idx, r in enumerate(ranks):
             if r < k:
@@ -160,10 +167,8 @@ def rank_biased_overlap(df: DataFrame, k: int = 10, p: float =0.1) -> dict[str, 
         for idx, (human, llm) in enumerate(zip(human_rels, llm_rels)):
             if human == 1 and llm == 1:
                 rbo_stat += 1.0
-            prefix_overlap[idx] = rbo_stat / (idx+1)
-        rbo += prefix_overlap[k-1]
-        # TODO: add the geometric r.v. probabilities into this calculation
-        breakpoint()
+            prefix_overlap[idx] = (g.pmf(idx+1) * rbo_stat)  / (idx+1)
+        rbo += sum(prefix_overlap)
     return {'rbo@k': rbo / num_queries}
 
 def calc_ir_metrics(df: DataFrame, functions: list[callable]=[]) -> dict[str, float]:
