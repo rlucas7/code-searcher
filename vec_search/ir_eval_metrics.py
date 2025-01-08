@@ -19,6 +19,7 @@ iii. Kendall Tau
 iv. Mean ave Precision@k
 """
 from itertools import accumulate
+from math import isclose
 from typing import Union
 
 from scipy.stats import spearmanr, kendalltau, geom
@@ -165,7 +166,7 @@ def rank_biased_overlap(df: DataFrame, k: int = 10, p: float =0.1) -> dict[str, 
                 llm_rels[r] = lrel[idx]
                 human_rels[r] = hrel[idx]
         for idx, (human, llm) in enumerate(zip(human_rels, llm_rels)):
-            if human == 1 and llm == 1:
+            if (human == 1 and llm == 1) or (human == 0 and llm == 0):
                 rbo_stat += 1.0
             prefix_overlap[idx] = (g.pmf(idx+1) * rbo_stat)  / (idx+1)
         rbo += sum(prefix_overlap)
@@ -218,10 +219,36 @@ if __name__ == "__main__":
             assert mean_ave_prec(df)['map_at_k'] == (1.+2. / 3.)/2.
     
     class TestRankBiasedOverlap(unittest.TestCase):
-        def test_rbo_with_perfect_match(self):
+        def test_rbo_with_perfect_match_all_nonrelevant(self):
             df = DataFrame({'relevances': [0,0,0,0],
                             'query_id': [1,1,1,1],
                             'rank': [0,1,2,3],
                             'llm_rel_score': [0,0,0,0]})
+            assert isclose(rank_biased_overlap(df)['rbo@k'], 1.0)
+
+        def test_rbo_with_perfect_match_all_relevant(self):
+            df = DataFrame({'relevances': [1,1,1,1],
+                            'query_id': [1,1,1,1],
+                            'rank': [0,1,2,3],
+                            'llm_rel_score': [1,1,1,1]})
+            assert isclose(rank_biased_overlap(df)['rbo@k'], 1.0)
+
+        def test_rbo_with_no_match_but_some_relevant(self):
+            df = DataFrame({'relevances': [1,1,0,0],
+                            'query_id': [1,1,1,1],
+                            'rank': [0,1,2,3],
+                            'llm_rel_score': [0,0,1,1]})
+            # NOTE: here the value is ~ XXX e-5 so need to drop abs_tol default
+            # a bit
+            assert isclose(rank_biased_overlap(df)['rbo@k'], 0.0, abs_tol=0.0001)
+
+        def test_rbo_with_all_match_but_some_relevant(self):
+            df = DataFrame({'relevances': [1,1,0,0],
+                            'query_id': [1,1,1,1],
+                            'rank': [0,1,2,3],
+                            'llm_rel_score': [1,1,0,0]})
+            # NOTE: here the value is ~ XXX e-5 so need to drop abs_tol default
+            # a bit
+            assert isclose(rank_biased_overlap(df)['rbo@k'], 1.0)
     # the main method here invokes discovery, execution, etc.
     unittest.main()
