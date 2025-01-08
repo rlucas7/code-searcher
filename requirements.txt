@@ -1,0 +1,19 @@
+# TODO: specify minimum versions for these and any max constrains
+
+click
+flask
+jsonlines
+numpy==1.24
+pandas
+sqlite-vec
+sqlean.py
+torch
+transformers
+
+# These are for the llm clients
+# TODO: make these optional imports via `extras` in a setup.py
+#    the idea being so that you can include any subset of these if
+#    you do not have or want to use all...
+openai
+google-generativeai # NOTE: this one may be unnecessary, not sure though
+google-cloud-aiplatform
