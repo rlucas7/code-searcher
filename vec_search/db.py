@@ -68,13 +68,14 @@ def init_db():
     names = set()
     with jsonlines.open(_JSONL_LOCAL_FILE) as reader:
         for idx, obj in enumerate(reader, start=1):
-            jl = json.loads(obj)
-            if not jl['func_name'] in names:
-                names.add(jl['func_name'])
-                db.execute(DDL_vec_insert_cmd, [idx, sqlite_vec.serialize_float32(jl['embeddings'])])
-                db.execute(DDL_content_insert_cmd, [idx, jl['func_name'], jl['path'], jl['sha'], jl['original_string'], jl['docstring']])
+            #breakpoint()
+            #jl = json.loads(obj)
+            if not obj['func_name'] in names:
+                names.add(obj['func_name'])
+                db.execute(DDL_vec_insert_cmd, [idx, sqlite_vec.serialize_float32(obj['embeddings'])])
+                db.execute(DDL_content_insert_cmd, [idx, obj['func_name'], obj['path'], obj['sha'], obj['original_string'], obj['docstring']])
             else:
-                print(f"{idx}th record is a duplicate, at path: {jl['path']}, function name: {jl['func_name']}")
+                print(f"{idx}th record is a duplicate, at path: {obj['path']}, function name: {obj['func_name']}")
     db.commit()
 
     # now confirm the vectors are loaded to the sqlite db instance in flask
