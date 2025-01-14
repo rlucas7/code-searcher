@@ -198,6 +198,7 @@ flask --app vec_search gen-llm-rels <input-csv> <output-csv> <llm-model-name> <d
 ```
 
 The defaults for the last 2 are `'openai'` and `'takelast'`.
+Also supported for `llm-model-name` are: `gemini`, more to be added.
 
 There are 2 prompts in the `llm_rel_gen.py` module, the default is to use the
 umbrella prompt.
@@ -205,12 +206,28 @@ umbrella prompt.
 TODO: add support for other prompt via click.
 
 For details cf. [this open issue](https://github.com/rlucas7/code-searcher/issues/6)
-# Metrics generation (WIP-work in progress)
 
-WIP:
-- IR Retrieval metrics for the data once placed into pandas df(s).
+# Metrics generation
+To generate IR metrics for the data once placed into pandas df(s).
 
-For details cf. [this open issue](https://github.com/rlucas7/code-searcher/issues/7)
+In this step we summarize the binary relevance metrics via some standard summary
+statistics, e.g. Cohen Kappa, Spearman rank correlation, Kendall Tau, Map@k, and
+Rank Biased Overlap-RBO@k. For all metrics the chosen `k` value is given in the
+flask config for the app. Summary statistics are piped to standard out and not
+persisted unless done manually by the invoker.
+
+The command to invoke is:
+
+```bash
+flask --app vec_search gen-ir-metrics <csv-filename>
+```
+so if you used the default `llm_gen_rel.csv` in the previous cmd, then you'd
+execute the following:
+
+```bash
+flask --app vec_search gen-ir-metrics llm_gen_rel.csv
+```
+and you'll see the metrics and after first seeing the raw dataframe in stdout.
 
 ## fine tune the model on custom data
 

@@ -179,6 +179,10 @@ def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
     c_df.to_csv(output_filename)
     print("all done...")
 
+# NOTE: while we could invole `gen-llm-rels` inside this cmd
+# clicks in clicks are discouraged, for more:
+# https://click.palletsprojects.com/en/stable/advanced/#invoking-other-commands
+# plus this gives us a better workflow for inspecting intermediate outputs
 @click.command('gen-ir-metrics')
 @click.argument('filename', type=click.Path(exists=True))
 def gen_ir_metrics(filename):
