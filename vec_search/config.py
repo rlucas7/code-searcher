@@ -33,7 +33,7 @@ AI_MODEL = 'microsoft/codebert-base-mlm'
 # Some of these entries are used for the browser gui only
 # but might be used for other items in future, e.g. link via file:// to the
 # local location (on disk) etc.
-_JSONL_LOCAL_FILE = "Collections-go.jsonl"
+_JSONL_LOCAL_FILE = "Collections-java.jsonl"
 
 
 # for sqlite extensions they are setup as dynamically linked libraries

@@ -38,12 +38,37 @@ def cohen_kappa(df: DataFrame) -> dict[str, float]:
     x_tab = crosstab(df.relevances, df.llm_rel_score, margins=True)
     # because of 0 on off diag we use a hacky good-turing smoother
     # TODO: make this work for ordinal >2 relevances
-    p_yes = x_tab[1][1] + 1
-    p_no = x_tab[0][0] + 1
+    # here for some queries if there are no 0-or no 1-then we raise key error and handle
+    # TODO: make this cleaner code, but for now it seems to work on test cases...
+    try:
+        p_yes = x_tab[1][1] + 1
+    except KeyError:
+        p_yes = 1
+    try:
+        p_no = x_tab[0][0] + 1
+    except KeyError:
+        p_no = 1
     n_items = x_tab['All']['All']
     p_A =  (p_yes + p_no) / n_items
-    p_rel = (x_tab[1]['All'] + x_tab['All'][1]) / (2 * n_items)
-    p_nrel = (x_tab[0]['All'] + x_tab['All'][0]) / (2 * n_items)
+    try:
+        p_rel = x_tab[1]['All']
+    except KeyError:
+        p_rel = 1
+    try:
+        p_rel +=  x_tab['All'][1]
+    except KeyError:
+        p_rel += 1
+    p_rel /= 2 * n_items
+    # now not rel...
+    try:
+        p_nrel = x_tab[0]['All']
+    except KeyError:
+        p_nrel = 1
+    try:
+        p_nrel +=  x_tab['All'][0]
+    except KeyError:
+        p_nrel += 1
+    p_nrel /= 2 * n_items
     p_E = p_rel * p_rel + p_nrel * p_nrel
     return {'Cohen-Kappa': (p_A - p_E) / (1. - p_E)}
 

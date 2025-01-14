@@ -173,7 +173,9 @@ def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
     llm_gen_df = DataFrame(llm_gen_data)
     c_df = concat([llm_gen_df, df], axis=1)
     # extracts the actual score from the string which is expected as `##final score: {int}"`
-    c_df['llm_rel_score'] = c_df['message'].str.split(':').apply(lambda x: int(x[1].strip()))
+    # we only do binary relevances, if the llm outputs a score higher than 1,
+    # or less than 0, we truncate
+    c_df['llm_rel_score'] = c_df['message'].str.split(':').apply(lambda x: max(0, min(int(x[1].strip()), 1)))
     c_df.to_csv(output_filename)
     print("all done...")
 
