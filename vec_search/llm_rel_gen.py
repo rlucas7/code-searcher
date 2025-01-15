@@ -54,9 +54,8 @@ class LLMRelAssessor(LLMRelAssessorBase):
             import vertexai
             vertexai.init(project=PROJECT_ID, location=LOCATION)
             gen_config = GenerationConfig(temperature=0.1, max_output_tokens=256)
-            # NOTE: 1.5 has stricter api limits but models response format varies a lot
-            # TODO: figure out batch api calls if supported
-            # model = "gemini-1.0-pro" # does not comport well with prompt
+            # NOTE: (i) model = "gemini-1.0-pro" # does not comport well with prompt
+            # (ii) api limits are strict so we need batch which requires gcs store input
             model = "gemini-1.5-pro"
             gen_model = GenerativeModel(model_name=model, generation_config=gen_config)
             self.client = gen_model

@@ -4,6 +4,7 @@ import sqlean as sqlite3
 import sqlite_vec
 from collections import defaultdict
 from datetime import datetime
+from time import sleep
 
 import click
 import jsonlines
@@ -157,11 +158,10 @@ def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
     click.echo(df.shape)
     prompt = Prompt(_umb_promt)
     llm_rel = LLMRelAssessor(prompt=prompt, model_name=llm_model)
-    # OPTIONAL-TODO: refactor to `df.apply()` if perf becomes an issue ...
-    # NOTE: if you switch passage with, say 'ok?' the returned score flips 0 -> 3...
     ## generate the llm relevance determinations
     llm_gen_data = defaultdict(list)
     for index, row in df.iterrows():
+        click.echo(f"processing index: {index} ...")
         # access of all entries follows via column name as key
         query = row['query']
         passage = row['doc'] + "\n\n\n" + row['query']
@@ -170,6 +170,11 @@ def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
         # print('idx: ', index, 'resp: ', resp['message'], 'usage: ', resp['usage'])
         for key, value in resp.items():
             llm_gen_data[key].append(value)
+        # HACK: slow down some for gemini's harsh rate limits-useful for testing
+        # but we really need batch for full scale eval as expected to take ~5 hours
+        # at this speed
+        if llm_model == "gemini":
+            sleep(15)
     llm_gen_df = DataFrame(llm_gen_data)
     c_df = concat([llm_gen_df, df], axis=1)
     # extracts the actual score from the string which is expected as `##final score: {int}"`
