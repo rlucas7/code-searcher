@@ -165,7 +165,9 @@ class LLMRelAssessor(LLMRelAssessorBase):
             for entry in data:
                 p_data.append(self.parse_resp(entry['response']))
             df = DataFrame(p_data)
-            df.to_csv(self.output_filename)
+            c_df = concat([df, self.df], axis=1)
+            c_df['llm_rel_score'] = df['message'].str.split(':').apply(lambda x: max(0, min(int(x[1].strip()), 1)))
+            c_df.to_csv(self.output_filename)
         else:
             raise NotImplementedError(f"generate_rel for client: {self.client!r} not implemented...")
 
