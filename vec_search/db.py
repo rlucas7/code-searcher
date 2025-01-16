@@ -157,32 +157,9 @@ def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
     click.echo(df.head())
     click.echo(df.shape)
     prompt = Prompt(_umb_promt)
-    llm_rel = LLMRelAssessor(prompt=prompt, model_name=llm_model)
-    ## generate the llm relevance determinations
-    llm_gen_data = defaultdict(list)
-    for index, row in df.iterrows():
-        click.echo(f"processing index: {index} ...")
-        # access of all entries follows via column name as key
-        query = row['query']
-        passage = row['doc'] + "\n\n\n" + row['query']
-        tp = {'query': query, 'passage': passage}
-        resp = llm_rel.generate_rel(template_params=tp, parse=True)
-        # print('idx: ', index, 'resp: ', resp['message'], 'usage: ', resp['usage'])
-        for key, value in resp.items():
-            llm_gen_data[key].append(value)
-        # HACK: slow down some for gemini's harsh rate limits-useful for testing
-        # but we really need batch for full scale eval as expected to take ~5 hours
-        # at this speed
-        if llm_model == "gemini":
-            sleep(15)
-    llm_gen_df = DataFrame(llm_gen_data)
-    c_df = concat([llm_gen_df, df], axis=1)
-    # extracts the actual score from the string which is expected as `##final score: {int}"`
-    # we only do binary relevances, if the llm outputs a score higher than 1,
-    # or less than 0, we truncate
-    c_df['llm_rel_score'] = c_df['message'].str.split(':').apply(lambda x: max(0, min(int(x[1].strip()), 1)))
-    c_df.to_csv(output_filename)
-    print("all done...")
+    llm_rel = LLMRelAssessor(df, output_filename, prompt=prompt, model_name=llm_model)
+    llm_rel.generate_rel(parse=True)
+    click.echo("all done...")
 
 # NOTE: while we could invole `gen-llm-rels` inside this cmd
 # clicks in clicks are discouraged, for more:

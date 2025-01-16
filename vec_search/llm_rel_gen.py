@@ -2,19 +2,30 @@
 This module houses the framework for generating LLM relevances for search queries.
 """
 import os
+import json
 
 from abc import ABC
+from collections import defaultdict
 from pathlib import Path
 from string import Template
+from time import sleep
 from typing import Union
 
+from pandas import DataFrame, concat
+
 # llm clients
+import vertexai
+import openai
+
 from openai import OpenAI
-from vertexai.generative_models import GenerationConfig, GenerativeModel
+from vertexai.batch_prediction import BatchPredictionJob
+from google.cloud import storage
 
 class LLMRelAssessorBase(ABC):
     def __init__(
         self,
+        df: DataFrame,
+        output_filename: str,
         prompt: Union[str, Template] = "",
         model_name: str = "",
         shot_count: int = 0
@@ -22,6 +33,8 @@ class LLMRelAssessorBase(ABC):
         self.shot_count = shot_count
         self.model_name = model_name
         self.prompt = prompt if Template else Template(prompt)
+        self.df = df
+        self.output_filename = output_filename
 
     def _create_client(self):
         raise NotImplementedError("error: you must implement this method in a child class ...")
@@ -31,11 +44,13 @@ class LLMRelAssessor(LLMRelAssessorBase):
     def __init__(
         self,
         # qrel,
+        df: DataFrame,
+        output_filename: str,
         prompt: Union[str, Template] = "",
         model_name: str = "openai",
         shot_count: int = 0
     ):
-        super().__init__(shot_count=shot_count, prompt=prompt, model_name=model_name)
+        super().__init__(df=df, output_filename=output_filename, shot_count=shot_count, prompt=prompt, model_name=model_name)
         # TODO: consider using `dotenv` package as part of app config overal refactor
         # if not os.environ["OPEN_AI_API_KEY"]:
         #    raise ValueError("error the OPEN_AI_API_KEY environment variable is not set")
@@ -51,39 +66,108 @@ class LLMRelAssessor(LLMRelAssessorBase):
             # requires a project setup in google cloud-make env
             PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
             LOCATION = os.environ.get("GCP_LOCATION", "us-central1")
-            import vertexai
             vertexai.init(project=PROJECT_ID, location=LOCATION)
-            gen_config = GenerationConfig(temperature=0.1, max_output_tokens=256)
             # NOTE: (i) model = "gemini-1.0-pro" # does not comport well with prompt
             # (ii) api limits are strict so we need batch which requires gcs store input
-            model = "gemini-1.5-pro"
-            gen_model = GenerativeModel(model_name=model, generation_config=gen_config)
-            self.client = gen_model
+            model = "gemini-1.5-pro-001"
+            self.client = BatchPredictionJob
+            self.model_name = model
         else:
             raise ValueError(f"model {self.model_name} is not currently supported ...")
 
-    def generate_rel(self, template_params: Union[None, dict[str, str]] = None, parse: bool = True):
-        # for now assume openai client and ref:
-        # https://platform.openai.com/docs/api-reference/debugging-requests
-        # for error/debug codes etc.
-        content = self.prompt.safe_substitute(template_params)
-        # !!! TODO !!!: `ABC.this` the difficulty in interface is actually clients ...
-        # basically  we want an common interface for llm clients and have this
-        # class `self` use that interface...
+    def generate_rel(self, parse: bool = True):
         if isinstance(self.client, OpenAI):
-            response = self.client.chat.completions.create(
-                messages=[{
+            ## generate the llm relevance determinations
+            llm_gen_data = defaultdict(list)
+            for index, row in self.df.iterrows():
+                print(f"processing index: {index} ...")
+                # access of all entries follows via column name as key
+                query = row['query']
+                passage = row['doc'] + "\n\n\n" + row['query']
+                tp = {'query': query, 'passage': passage}
+                content = self.prompt.safe_substitute(tp)
+                response = self.client.chat.completions.create(
+                    messages=[{
                     "role": "user",
                     "content": content,
-                }],
-                model=self.model_name,
+                    }],
+                    model=self.model_name,
+                )
+                resp = self.parse_resp(response) if parse else response
+                for key, value in resp.items():
+                    llm_gen_data[key].append(value)
+            llm_gen_df = DataFrame(llm_gen_data)
+            c_df = concat([llm_gen_df, self.df], axis=1)
+            # if the respon score is not 0/1 then convert it
+            c_df['llm_rel_score'] = c_df['message'].str.split(':').apply(lambda x: max(0, min(int(x[1].strip()), 1)))
+            # write results to local filesystem
+            c_df.to_csv(self.output_filename)
+        elif self.model_name == "gemini-1.5-pro-001":
+            input_bucket_name = "batch-llm-relevance-inputs"
+            output_bucket_name = "gemini-completions-batch"
+            storage_client = storage.Client()
+            # NOTE: annoyingly a generic 'gemini-1.5-pro' will raise an error
+            # format df and write to `input_bucket`
+            with open('./examples.jsonl', 'w') as f:
+                for index, row in self.df.iterrows():
+                    query = row['query']
+                    passage = row['doc'] + "\n\n\n" + row['query']
+                    tp = {'query': query, 'passage': passage}
+                    content = self.prompt.safe_substitute(tp)
+                    r = {"request":
+                        {"contents": [{"role": "user",
+                                       "parts": [{"text": content}]}],
+                                       "generationConfig":{"temperature": 0.4}}
+                    }
+                    # request as a string and write to tempfile.
+                    rs = json.dumps(r)
+                    f.write(rs + "\n")
+            # now upload the file to gcs
+            blob = storage_client.bucket(input_bucket_name).blob("examples.jsonl")
+            blob.upload_from_filename("./examples.jsonl")
+            print("upload to gcs finished...")
+            sleep(10)
+            batch_prediction_job = BatchPredictionJob.submit(
+                source_model=self.model_name,
+                # for now make these const
+                input_dataset=f"gs://{input_bucket_name}/examples.jsonl",
+                output_uri_prefix=f"gs://{output_bucket_name}",
             )
-        elif isinstance(self.client, GenerativeModel):
-            response = self.client.generate_content(contents=content)
-            # breakpoint()
+            # Check job status
+            print(f"Job resource name: {batch_prediction_job.resource_name}")
+            print(f"Model resource name with the job: {batch_prediction_job.model_name}")
+            print(f"Job state: {batch_prediction_job.state.name}")
+
+            # Refresh the job until complete
+            while not batch_prediction_job.has_ended:
+                sleep(30)
+                batch_prediction_job.refresh()
+                # this seems preferrable to the given example if/elif beneath
+                print(f"Job state: {batch_prediction_job.state.name}")
+                # Check if the job succeeds
+                if batch_prediction_job.has_succeeded:
+                    print("Job succeeded!")
+                elif batch_prediction_job.error is not None:
+                    print(f"Job failed: {batch_prediction_job.error} ...")
+            # Give the location of the output in gcs
+            print(f"Job output location: {batch_prediction_job.output_location}")
+            # now given the output location we need to parse and handle...
+            bucket = storage_client.bucket(output_bucket_name)
+            # the convention seems to be this...
+            blob_name = batch_prediction_job.output_location.split("/")[-1] + "/predictions.jsonl"
+            blob = bucket.blob(blob_name)
+            data = []
+            with blob.open('r') as f:
+                for line in f:
+                    data.append(json.loads(line))
+            # construct parsed data
+            p_data = []
+            for entry in data:
+                p_data.append(self.parse_resp(entry['response']))
+            df = DataFrame(p_data)
+            df.to_csv(self.output_filename)
         else:
             raise NotImplementedError(f"generate_rel for client: {self.client!r} not implemented...")
-        return self.parse_resp(response) if parse else response
 
     def parse_resp(self, resp) -> dict[str, str]:
         # openai docs on response object
@@ -97,9 +181,9 @@ class LLMRelAssessor(LLMRelAssessorBase):
             'message': '',
             'usage': ''
         }
-        # both OpenAI and vertexai.GenerativeModel have the .to_dict() method
-        rd = resp.to_dict()
+        # both OpenAI and vertexai.GenerativeModel have a .to_dict() method
         if isinstance(self.client, OpenAI):
+            rd = resp.to_dict()
             if len(rd['choices']) > 1:
                 print("multiple choices in response, taking the first...")
             choice = rd['choices'][0]
@@ -111,19 +195,22 @@ class LLMRelAssessor(LLMRelAssessorBase):
             stuff['finish-reason'] = choice['finish_reason']
             # ...
             llm_client = 'openai'
-        elif isinstance(self.client, GenerativeModel):
+        elif self.model_name == "gemini-1.5-pro-001":
+            # with gemini batch replies-we've already converted to dict
+            # NOTE: batch keynames are camelcased whereas non-batch are snake-arg!
+            rd = resp
             if len(rd['candidates']) > 1:
                 print("multiple candidates in response, taking the first...")
             choice = rd['candidates'][0]['content']
             stuff['msg-id'] = None
-            stuff['model-id'] =  rd['model_version']
-            stuff['usage'] = rd['usage_metadata']
+            stuff['model-id'] =  rd.get('modelVersion', self.model_name)
+            stuff['usage'] = rd.get('usageMetadata', "")
             for k, v in choice['parts'][0].items():
                 if k == 'text':
                     stuff['message'] += v
                 else:
                     print(f"in gemini, unk resp k,v: = {k}, {v} ...")
-            stuff['finish-reason'] = rd['candidates'][0]['finish_reason']
+            stuff['finish-reason'] = rd['candidates'][0]['finishReason']
             llm_client = 'gemini'
         else:
             raise NotImplementedError(f"parse_resp for client: {self.client!r} not implemented...")
