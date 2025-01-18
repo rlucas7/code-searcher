@@ -200,12 +200,13 @@ flask --app vec_search gen-llm-rels <input-csv> <output-csv> <llm-model-name> <d
 The defaults for the last 2 are `'openai'` and `'takelast'`.
 Also supported for `llm-model-name` are: `gemini`, more to be added.
 
-There are 2 prompts in the `llm_rel_gen.py` module, the default is to use the
-umbrella prompt.
+There prompt is in the `llm_rel_gen.py` module, we use the umbrella prompt.
 
-TODO: add support for other prompt via click.
+Note: if you use the openai llm you need an api key in `OPEN_AI_API_KEY` env var, if you use the gemini model you need the `GCP_PROJECT_ID` env var
+set to a project which has the necessary privileges and you need to modify the bucket names for your project.
 
-For details cf. [this open issue](https://github.com/rlucas7/code-searcher/issues/6)
+
+For TODOs cf. [this open issue](https://github.com/rlucas7/code-searcher/issues/10)
 
 # Metrics generation
 To generate IR metrics for the data once placed into pandas df(s).
@@ -228,11 +229,3 @@ execute the following:
 flask --app vec_search gen-ir-metrics llm_gen_rel.csv
 ```
 and you'll see the metrics and after first seeing the raw dataframe in stdout.
-
-## fine tune the model on custom data
-
-TODO... design and write up the workflow
-
-## compare two models (fine tuned or otherwise)
-
-TODO... design and write up the workflow for data analysis

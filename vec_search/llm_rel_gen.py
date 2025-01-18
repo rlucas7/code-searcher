@@ -147,7 +147,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 # Check if the job succeeds
                 if batch_prediction_job.has_succeeded:
                     print("Job succeeded!")
-                elif batch_prediction_job.error is not None:
+                elif batch_prediction_job.error != "":
                     print(f"Job failed: {batch_prediction_job.error} ...")
             # Give the location of the output in gcs
             print(f"Job output location: {batch_prediction_job.output_location}")

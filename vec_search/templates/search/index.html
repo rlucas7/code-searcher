@@ -58,6 +58,7 @@
     <form id="query-id-{{post['query-id']}}" onclick="clickNHide(this.id)">
       <fieldset> <!--user relevance input -->
         <legend>Relevant?:</legend>
+        <!-- TODO: make `<detail>` tags collapse too on click event-QOL improvement-->
         <div id="query-id-radio-{{post['query-id']}}" onclick="clickNSubmit(this.id)">
           <input type="radio" name="yes-no" value="yes"/>
           <label for="yes">Yes</label>
