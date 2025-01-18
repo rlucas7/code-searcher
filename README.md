@@ -1,3 +1,10 @@
+# Prereqs
+
+## vector db extension install for flask app
+
+Follow instructions to build vector extension [here](https://docs.google.com/document/d/1qtNtxuK96Fha1l3QYFvkM-4-K05ganpsy4wd-UfaY9g/edit?tab=t.0)
+
+and lmk if that works, if so we may add it here to readme directly.
 
 ## make venv
 
