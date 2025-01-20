@@ -1,7 +1,9 @@
 # TODO: specify minimum versions for these and any max constrains
 
+bertviz
 click
 flask
+IPython
 jsonlines
 numpy==1.24
 pandas
@@ -9,6 +11,7 @@ sqlite-vec
 sqlean.py
 torch
 transformers
+scipy
 
 # These are for the llm clients
 # TODO: make these optional imports via `extras` in a setup.py

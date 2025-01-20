@@ -4,28 +4,27 @@
 
 Follow instructions to build vector extension [here](https://docs.google.com/document/d/1qtNtxuK96Fha1l3QYFvkM-4-K05ganpsy4wd-UfaY9g/edit?tab=t.0)
 
-and lmk if that works, if so we may add it here to readme directly.
+Will be added here to readme directly.
+
+Tested on Mac OS (both M1 and b6x64), with Python 3.11.
 
 ## make venv
 
 ```bash
 python3 -m venv .
 . bin/activate
-pip install sqlite-vec sqlean.py flask click jsonlines
-```
-or if you want to use the `requirements.txt` file do
-```bash
 python3 -m pip install -r requirements.txt
 ```
-instead of the `pip install ...` line.
 
 ## initialize the db
+
+Update paths in vec_search/config.py file for DATABASE and for _SQLITE_VEC_DLL_PATH variables with your local paths.
 
 ```bash
 flask --app vec_search init-db
 ```
 Note that the above command populates the sqlite db with the vectors
-from the given file.
+from the given file (currently, the Collections-java.jsonl file is used as example, as noted in vec_search/config.py).
 
 ## to run the app on localhost
 
@@ -40,19 +39,13 @@ any application-and any vector embedding method.
 ## execute a semantic search
 
 You may have noticed the search form on the top of the listing page.
-If you enter a natural language description like you'll see something like
+If you enter a natural language description like ``a function to add an element to an array`` you'll see something like
 
 ```bash
 "GET /?q=a+function+to+add+an+element+to+an+array HTTP/1.1" 200
 ```
 
 in the stdout for the terminal where the flask app is running.
-Until now we did not have embedding for the natural language text,
-including the vector embeddings requires we install a few more ML dependencies.
-
-```bash
-pip install numpy==1.24 torch transformers
-```
 
 # execute searches locally
 
@@ -66,14 +59,15 @@ maintaining a useable prototype.
 A search engine results page (SERP) shows the results from a natural
 language query, in a format that is useful for the human.
 For semantic search we use cosine distance between the query embedding
-and the entities, in the example jsonl file provided these entities
-are are programming language and associated documentation.
+and the embedded entities in the example jsonl file. These entities
+are programming languages and associated documentation.
 
-The embedding model for the query and the code provided is the codebert
-model from Microsoft. This is to keep the model size small while still
+The embedding model for the query and the code provided is the CodeBERT
+model from Microsoft. The goal is to keep the model size small while still
 working end to end. The code model is configurable via changes to the
  `config.py` module's `AI_MODEL` entry.
-However, if you use a different model you may need to re-embed the code
+
+However, if you use a different model it is recommended to re-embed the code
 entities to maintain proper alignment of vector spaces between query embeddings
 and entity embeddings.
 
@@ -82,6 +76,7 @@ Typical inspection workflow:
 ![Listings](vec_search/images/listing_landing_page.png)
 Here you find the listings of all entries in your jsonl file
 in an arbitrary order because no search has been performed.
+
 Next use the search bar to enter a natural language search query.
 
 ![SERP](vec_search/images/search_results.png)
@@ -99,11 +94,13 @@ of particular terms in the query or the code.
 After sensemaking the human may want to iteratively modify
 their natural language query using the 3 part workflow above.
 
+Note: the model weights need at least 16GB RAM and a reasonable amount of disk space.
+
 # Relevance Annotation
 
 ## Human workflow
-The intent of this workflow is to enable a user to generate a benchmark AKA
-golden dataset from their code-query corpus.
+The intent of this workflow is to enable a user to generate a benchmark (AKA
+golden dataset) from their code-query corpus.
 
 Purpose:
 The annotation workflow, and subsequently generated benchmark data are
@@ -204,7 +201,8 @@ In general the argments for `gen-llm-rels` command look like:
 flask --app vec_search gen-llm-rels <input-csv> <output-csv> <llm-model-name> <dup-strategy>
 ```
 
-The defaults for the last 2 are `'openai'` and `'takelast'`.
+The defaults for the last 2 are `'openai'` and `'takelast'`. 
+
 Also supported for `llm-model-name` are: `gemini`, more to be added.
 
 There prompt is in the `llm_rel_gen.py` module, we use the umbrella prompt.

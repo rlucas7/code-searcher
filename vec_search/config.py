@@ -11,7 +11,10 @@
 DEBUG = True
 PREFERRED_URL_SCHEME = 'http'
 SECRET_KEY = 'dev'
-DATABASE = '/Users/rlucas/sqlitevec-w-flask/var/vec_search-instance/vec_search.sqlite'
+# DATABASE = '/Users/rlucas/sqlitevec-w-flask/var/vec_search-instance/vec_search.sqlite'
+# DATABASE = '/Users/dr/ailab/code-searcher/var/vec_search-instance/vec_search.sqlite'
+DATABASE = '[your path to var dir]/var/vec_search-instance/vec_search.sqlite'
+
 
 
 # these config values are for the model that is used to generate the embeddings
@@ -41,4 +44,7 @@ _JSONL_LOCAL_FILE = "Collections-java.jsonl"
 # should be absolute and contain the name of the executable file that you
 # generate when you setup sqlite-vec
 # for more info see the sqlite-vec docs
-_SQLITE_VEC_DLL_PATH = "/Users/rlucas/sqlite-ext/sqlite-vec/dist/vec0.dylib"
+
+# _SQLITE_VEC_DLL_PATH = "/Users/rlucas/sqlite-ext/sqlite-vec/dist/vec0.dylib"
+# _SQLITE_VEC_DLL_PATH = "/Users/dr/ailab/sqlite-vec/dist/vec0.dylib"
+_SQLITE_VEC_DLL_PATH = "[your path to sqlite-vec]/sqlite-vec/dist/vec0.dylib"
