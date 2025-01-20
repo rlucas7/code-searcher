@@ -59,14 +59,15 @@ maintaining a useable prototype.
 A search engine results page (SERP) shows the results from a natural
 language query, in a format that is useful for the human.
 For semantic search we use cosine distance between the query embedding
-and the entities, in the example jsonl file provided these entities
-are are programming language and associated documentation.
+and the embedded entities in the example jsonl file. These entities
+are programming languages and associated documentation.
 
-The embedding model for the query and the code provided is the codebert
-model from Microsoft. This is to keep the model size small while still
+The embedding model for the query and the code provided is the CodeBERT
+model from Microsoft. The goal is to keep the model size small while still
 working end to end. The code model is configurable via changes to the
  `config.py` module's `AI_MODEL` entry.
-However, if you use a different model you may need to re-embed the code
+
+However, if you use a different model it is recommended to re-embed the code
 entities to maintain proper alignment of vector spaces between query embeddings
 and entity embeddings.
 
@@ -75,6 +76,7 @@ Typical inspection workflow:
 ![Listings](vec_search/images/listing_landing_page.png)
 Here you find the listings of all entries in your jsonl file
 in an arbitrary order because no search has been performed.
+
 Next use the search bar to enter a natural language search query.
 
 ![SERP](vec_search/images/search_results.png)
@@ -92,11 +94,13 @@ of particular terms in the query or the code.
 After sensemaking the human may want to iteratively modify
 their natural language query using the 3 part workflow above.
 
+Note: the model weights need at least 16GB RAM and a reasonable amount of disk space.
+
 # Relevance Annotation
 
 ## Human workflow
-The intent of this workflow is to enable a user to generate a benchmark AKA
-golden dataset from their code-query corpus.
+The intent of this workflow is to enable a user to generate a benchmark (AKA
+golden dataset) from their code-query corpus.
 
 Purpose:
 The annotation workflow, and subsequently generated benchmark data are
@@ -197,7 +201,8 @@ In general the argments for `gen-llm-rels` command look like:
 flask --app vec_search gen-llm-rels <input-csv> <output-csv> <llm-model-name> <dup-strategy>
 ```
 
-The defaults for the last 2 are `'openai'` and `'takelast'`.
+The defaults for the last 2 are `'openai'` and `'takelast'`. 
+
 Also supported for `llm-model-name` are: `gemini`, more to be added.
 
 There prompt is in the `llm_rel_gen.py` module, we use the umbrella prompt.
