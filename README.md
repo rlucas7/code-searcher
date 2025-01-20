@@ -39,19 +39,13 @@ any application-and any vector embedding method.
 ## execute a semantic search
 
 You may have noticed the search form on the top of the listing page.
-If you enter a natural language description like you'll see something like
+If you enter a natural language description like ``a function to add an element to an array`` you'll see something like
 
 ```bash
 "GET /?q=a+function+to+add+an+element+to+an+array HTTP/1.1" 200
 ```
 
 in the stdout for the terminal where the flask app is running.
-Until now we did not have embedding for the natural language text,
-including the vector embeddings requires we install a few more ML dependencies.
-
-```bash
-pip install numpy==1.24 torch transformers
-```
 
 # execute searches locally
 
