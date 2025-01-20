@@ -28,3 +28,7 @@ collections-c-embeds.jsonl
 
 # a shell file to store env vars e.g. OPEN_AI_API_KEY, etc...
 envvars.sh
+
+# generated files when executing the workflow
+*.csv
+*.csv
