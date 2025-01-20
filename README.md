@@ -4,28 +4,27 @@
 
 Follow instructions to build vector extension [here](https://docs.google.com/document/d/1qtNtxuK96Fha1l3QYFvkM-4-K05ganpsy4wd-UfaY9g/edit?tab=t.0)
 
-and lmk if that works, if so we may add it here to readme directly.
+Will be added here to readme directly.
+
+Tested on Mac OS (both M1 and b6x64), with Python 3.11.
 
 ## make venv
 
 ```bash
 python3 -m venv .
 . bin/activate
-pip install sqlite-vec sqlean.py flask click jsonlines
-```
-or if you want to use the `requirements.txt` file do
-```bash
 python3 -m pip install -r requirements.txt
 ```
-instead of the `pip install ...` line.
 
 ## initialize the db
+
+Update paths in vec_search/config.py file for DATABASE and for _SQLITE_VEC_DLL_PATH variables with your local paths.
 
 ```bash
 flask --app vec_search init-db
 ```
 Note that the above command populates the sqlite db with the vectors
-from the given file.
+from the given file (currently, the Collections-java.jsonl file is used as example, as noted in vec_search/config.py).
 
 ## to run the app on localhost
 
