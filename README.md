@@ -43,7 +43,7 @@ Then run sample-usage line by line from here https://github.com/asg017/sqlite-ve
 ```
 
 
-Following steps were tested for Python 3.11 (MacOS M1 and intel).
+Following steps were tested for Python 3.11 (using Mac M1 and Mac intel chips).
 
 ## make venv
 
