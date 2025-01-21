@@ -36,7 +36,7 @@ After running `make all`, to run the above sample commands one must start REPL f
 ./dist/sqlite3
 ```
 
-Then ca run sample-usage line by line from here https://github.com/asg017/sqlite-vec?tab=readme-ov-file#sample-usage in REPL starting with:
+Then run sample-usage line by line from here https://github.com/asg017/sqlite-vec?tab=readme-ov-file#sample-usage in REPL starting with:
 
 ```bash
 .load ./dist/vec0
