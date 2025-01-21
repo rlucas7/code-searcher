@@ -2,11 +2,49 @@
 
 ## vector db extension install for flask app
 
-Follow instructions to build vector extension [here](https://docs.google.com/document/d/1qtNtxuK96Fha1l3QYFvkM-4-K05ganpsy4wd-UfaY9g/edit?tab=t.0)
+The setup was tested on Mac OS (both Apple silicon and Intel).
 
-Will be added here to readme directly.
+Steps:
 
-Tested on Mac OS (both M1 and b6x64), with Python 3.11.
+1. Clone the sqlite-vec extension repo locally:
+```bash
+git clone https://github.com/asg017/sqlite-vec.git
+```
+Then navigate into directory
+```bash
+cd sqlite-vec
+```
+
+2. While in the sqlite-vec cloned repo, get the amalgamated build of sqlite locally into a directory using step by step the commands in this script (skip superfluous line 4) https://github.com/asg017/sqlite-vec/blob/aa9f049a8b45f46cc68909358311564a1917f63f/scripts/vendor.sh 
+
+3. Now unless laptop was configured to use gcc, it likely uses clang for C compilations. To get the build to use clang swap the CC env var with clang here
+https://github.com/asg017/sqlite-vec/blob/aa9f049a8b45f46cc68909358311564a1917f63f/Makefile#L11 in the makefile. 
+
+4. {optional} Turn on the verbose flag to watch more of what was happening and to aid in any debugging. To generate verbose add a `dash v` here:
+https://github.com/asg017/sqlite-vec/blob/aa9f049a8b45f46cc68909358311564a1917f63f/Makefile#L100
+
+5. After running the makefile all target, via `make all` in the same directory as the makefile,
+one should have an executable `*.dylib` file running locally-assuming the makefile executed fully. For instance the dylib file was under dist and the makefile will put the sqlite3 executable under the same directory. The path looks like `sqlite-vec/dist/vec0.dylib` .
+
+One can also see this referenced in the `config.py` module in the flask app for the project, under the `_SQLITE_VEC_DLL_PATH` value in `config.py`.
+
+6. Confirm that the sqlite3 build can use the extension. The make build generates the executable sqlite3 inside the dist directory. We can test that the vector extension was built successfully via the examples in the readme for the extension https://github.com/asg017/sqlite-vec?tab=readme-ov-file#sample-usage, before proceeding to flask setup. We want to confirm that sqlite can use the extension on your machine regardless of the flask& python setup/configs.
+
+After running `make all`, to run the above sample commands one must start REPL from the root of sqlite-vec repo with:
+
+```bash
+./dist/sqlite3
+```
+
+Then run sample-usage line by line from here https://github.com/asg017/sqlite-vec?tab=readme-ov-file#sample-usage in REPL starting with:
+
+```bash
+.load ./dist/vec0
+```
+if you are able to run the example SQL lines from the linked file then you have successfully build the executable for sqlite and the vector extension. 
+then next step is to setup the app to run locally, the app uses the vector extension. 
+
+Following steps were tested for Python 3.11 (using Mac M1 and Mac intel chips).
 
 ## make venv
 
