@@ -41,7 +41,8 @@ Then run sample-usage line by line from here https://github.com/asg017/sqlite-ve
 ```bash
 .load ./dist/vec0
 ```
-
+if you are able to run the example SQL lines from the linked file then you have successfully build the executable for sqlite and the vector extension. 
+then next step is to setup the app to run locally, the app uses the vector extension. 
 
 Following steps were tested for Python 3.11 (using Mac M1 and Mac intel chips).
 
