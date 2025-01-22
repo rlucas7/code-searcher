@@ -7,13 +7,15 @@
 # TODO: investigate using dynaconf instead, a config tool
 # that has a really clean ontology of config and config like items
 # e.g. they separate secrets from config-which is nice
+import os
 
 DEBUG = True
 PREFERRED_URL_SCHEME = 'http'
 SECRET_KEY = 'dev'
-# DATABASE = '/Users/rlucas/sqlitevec-w-flask/var/vec_search-instance/vec_search.sqlite'
-# DATABASE = '/Users/dr/ailab/code-searcher/var/vec_search-instance/vec_search.sqlite'
-DATABASE = '[your path to var dir]/var/vec_search-instance/vec_search.sqlite'
+
+# NOTE: this assumes you always call from the repo root which is what
+# should be happening anyway
+DATABASE = f"{os.getcwd()}/var/vec_search-instance/vec_search.sqlite"
 
 
 
@@ -36,15 +38,15 @@ AI_MODEL = 'microsoft/codebert-base-mlm'
 # Some of these entries are used for the browser gui only
 # but might be used for other items in future, e.g. link via file:// to the
 # local location (on disk) etc.
-_JSONL_LOCAL_FILE = "Collections-java.jsonl"
+_JSONL_LOCAL_FILE = "Collections-go.jsonl"
 
+# this corresponds to the sub-directory under space that has the sqlite extension
+# development environment
+_SQLITE_WORKSPACE = "sqlite-ext" if os.environ.get('USER') == "rlucas" else "ailab"
 
 # for sqlite extensions they are setup as dynamically linked libraries
 # that you compile from the extension code via your C-compiler. The path here
 # should be absolute and contain the name of the executable file that you
 # generate when you setup sqlite-vec
 # for more info see the sqlite-vec docs
-
-# _SQLITE_VEC_DLL_PATH = "/Users/rlucas/sqlite-ext/sqlite-vec/dist/vec0.dylib"
-# _SQLITE_VEC_DLL_PATH = "/Users/dr/ailab/sqlite-vec/dist/vec0.dylib"
-_SQLITE_VEC_DLL_PATH = "[your path to sqlite-vec]/sqlite-vec/dist/vec0.dylib"
+_SQLITE_VEC_DLL_PATH = f"/Users/{os.environ.get('USER')}/{_SQLITE_WORKSPACE}/sqlite-vec/dist/vec0.dylib"

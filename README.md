@@ -239,7 +239,7 @@ In general the argments for `gen-llm-rels` command look like:
 flask --app vec_search gen-llm-rels <input-csv> <output-csv> <llm-model-name> <dup-strategy>
 ```
 
-The defaults for the last 2 are `'openai'` and `'takelast'`. 
+The defaults for the last 2 are `'openai'` and `'takelast'`.
 
 Also supported for `llm-model-name` are: `gemini`, more to be added.
 
