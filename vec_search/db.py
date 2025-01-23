@@ -170,9 +170,35 @@ def gen_ir_metrics(filename):
         print(f"{k}: {v}")
 
 
+# NOTE: `nargs=-1` indicates an arbitrary number
+# we expect at least 2
+@click.command('rad-merge', context_settings={"ignore_unknown_options": True})
+@click.argument('filenames', nargs=-1, type=click.Path(exists=True))
+@click.argument('output_filename', type=click.Path(exists=False))
+def rad_merge(filenames, output_filename):
+    # we assume input is the output of `gen-llm-rels` so they're in that format
+    assert len(filenames) >= 2, f"expected at least 2 files but got {len(filenames)} ..."
+    # setup DF
+    usecols = ["query_id", "post_id", "user_id", "relevances", "rank", "distance", "query", "doc", "code"]
+    func = lambda x: x.split(",").pop()
+    convs = {"relevances": func}
+    click.echo(f"basing dataframe off of {click.format_filename(filenames[0])} ...")
+    dfs = [read_csv(filenames[0], sep='|', header=0, converters=convs, usecols=usecols)]
+    for filename in filenames[1:]:
+        click.echo(f"merging dataframes: {click.format_filename(filename)} ...")
+        dfs.append(read_csv(filename, sep='|', header=0, converters=convs, usecols=usecols))
+    df = concat(dfs, axis=0)
+    print(df.head())
+    print(df.shape)
+    click.echo(f"writing merged dataframes: {click.format_filename(output_filename)} ...")
+    df.to_csv(output_filename, sep='|', quotechar='"', columns=usecols, lineterminator='\r\n')
+    click.echo("all done ...")
+
+
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
     app.cli.add_command(export_rad_to_csv)
     app.cli.add_command(gen_llm_rels)
     app.cli.add_command(gen_ir_metrics)
+    app.cli.add_command(rad_merge)
