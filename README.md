@@ -296,4 +296,6 @@ An example command where `rad1.csv` and `rad2.csv` exist locally and `merged.csv
 flask --app vec_search rad-merge rad1.csv rad2.csv merged.csv
 ```
 
-the invocation makes the relevance results from rad1.csv and rad2.csv merged into the file  `merged.csv`. The `merged.csv` file can them be used in all downstream steps, e.g. `gen-llm-rels` and the output from the `gen-llm-rels`-using the merged file-is used as input to the `gen-ir-metrics` command.
+The `merged.csv` file can them be used in all downstream steps, e.g. `gen-llm-rels` and the output from the `gen-llm-rels`-using the merged file-is used as input to the `gen-ir-metrics` command.
+
+For instance, using the merged file, run (with the default AI),`flask --app vec_search gen-llm-rels merged.csv llm_gen_rel.csv`, and then, to get metrics, `flask --app vec_search gen-ir-metrics llm_gen_rel.csv`, which will output the calculated metrics to stdout as usual.
