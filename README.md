@@ -276,9 +276,7 @@ and you'll see the metrics and after first seeing the raw dataframe in stdout.
 
 # Multiple Human Annotation Determinations of Relevance
 
-For a given human annotation file there may be other human's annotations which
-we desire to merge into a single data set before generation of AI relevances and
-subsequent metric generations.
+We may have several human annotation files, from distinct human annotators. We need to merge these annotation files into a single dataset/file before generation of AI relevances and subsequent metrics generation.
 
 For such a case we have a click command that merges multiple relevance files from
 localhost into a single file.
