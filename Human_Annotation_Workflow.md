@@ -38,6 +38,6 @@ The convention used for these output files is
 
 Step 8. Backup/upload this generated output file to the project output bucket.
 
-Step 9. Generate the IR metrics for the output file frin steo 7, and copy the outputs from stdout and paste those output metrics in [the doc](https://docs.google.com/document/d/1V0IDoBw66FctPoFOjNgzAZ7i5j_s4hEoOTd-SOJCXpI/edit?tab=t.0). 
+Step 9. Generate the IR metrics for the output file from step 7, and copy the outputs from stdout and paste those output metrics in [the doc](https://docs.google.com/document/d/1V0IDoBw66FctPoFOjNgzAZ7i5j_s4hEoOTd-SOJCXpI/edit?tab=t.0). 
 
 NOTE: The doc in Step 9 is a scratch doc and the ultimate results will be collated into a table in the manuscript.
