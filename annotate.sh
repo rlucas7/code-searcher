@@ -28,4 +28,4 @@ flask --app vec_search gen-ir-metrics llm_gen_rel-openai-$lang-$initials.csv > m
 # with gemini
 flask --app vec_search gen-llm-rels rad-$lang-lang-$initials.csv llm_gen_rel-gemini-$lang-$initials.csv gemini
 
-flask --app vec_search gen-ir-metrics llm_gen_rel-gemini-python-dr.csv > metrics-gemini-python-dr.txt
+flask --app vec_search gen-ir-metrics llm_gen_rel-gemini-$lang-$initials.csv > metrics-gemini-$lang-$initials.txt
