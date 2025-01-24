@@ -18,7 +18,7 @@ echo "got: $initials"
 flask --app vec_search init-db 
 flask --app vec_search run --debug
 
-flask --app vec_search export-rad-to-csv rad-python-lang-dr.csv 
+flask --app vec_search export-rad-to-csv rad-$lang-lang-$initials.csv 
 
 # with openai
 flask --app vec_search gen-llm-rels rad-python-lang-dr.csv llm_gen_rel-openai-python-dr.csv
