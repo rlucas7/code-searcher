@@ -86,9 +86,10 @@
  {% else %}
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
   <script>
-    const tooltipTriggerList = document.querySelectorAll('.tt');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
     if(localStorage.getItem('tt-viz') === null || localStorage.getItem('tt-viz') === 'false'){
+      // this is the beginner intro tooltips...
+      const tooltipTriggerList = document.querySelectorAll('.tt');
+      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
       localStorage.setItem('tt-viz', 'true');
       let n = tooltipList.length;
       for(let i=0; i<n; i++){
