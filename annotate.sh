@@ -1,4 +1,12 @@
-# replace language and userid every time annotate workflow runs
+#!/bin/bash                                                                     
+                                                                                
+echo "Enter your programming language, e.g. C, go, java, js, or python:"        
+read lang                                                                       
+echo "got: $lang"                                                               
+                                                                                
+echo "Enter your initials: "                                                    
+read initials                                                                   
+echo "got: $initials"  
 # could give them as cmd line args
 
 # openai key export  and google auth login can be included here or performed before start
