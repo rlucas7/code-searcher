@@ -32,3 +32,4 @@ envvars.sh
 # generated files when executing the workflow
 *.csv
 *.csv
+*.txt
