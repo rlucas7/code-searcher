@@ -272,3 +272,30 @@ execute the following:
 flask --app vec_search gen-ir-metrics llm_gen_rel.csv
 ```
 and you'll see the metrics and after first seeing the raw dataframe in stdout.
+
+
+# Multiple Human Annotation Determinations of Relevance
+
+We may have several human annotation files, from distinct human annotators. We need to merge these annotation files into a single dataset/file before generation of AI relevances and subsequent metrics generation.
+
+For such a case we have a click command that merges multiple relevance files from
+localhost into a single file.
+
+The primary reason for doing so is to conform to the existing input for the `gen-llm-rels`
+command and to enable distributed workflows, e.g. each human asynchronously generates
+relevances and then if they choose to, can share the results for others to use.
+
+Any analysis may choose a non-empty subset of shared results on which to perform the IR
+metrics generation and subsequent analysis using the `gen-ir-metrics` command.
+
+The merging of files is supported locally via the `rad-merge` command.
+
+An example command where `rad1.csv` and `rad2.csv` exist locally and `merged.csv` does not exist on the local filesystem, is:
+
+```bash
+flask --app vec_search rad-merge rad1.csv rad2.csv merged.csv
+```
+
+The `merged.csv` file can them be used in all downstream steps, e.g. `gen-llm-rels` and the output from the `gen-llm-rels`-using the merged file-is used as input to the `gen-ir-metrics` command.
+
+For instance, using the merged file, run (with the default AI),`flask --app vec_search gen-llm-rels merged.csv llm_gen_rel.csv`, and then, to get metrics, `flask --app vec_search gen-ir-metrics llm_gen_rel.csv`, which will output the calculated metrics to stdout as usual.
