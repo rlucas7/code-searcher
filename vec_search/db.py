@@ -97,6 +97,18 @@ def init_db():
     db.close()
 
 
+@click.command('reset-users')
+def reset_users():
+    drop_sql_cmd = "DROP TABLE IF EXISTS user;"
+    create_sql_cmd = "CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL);"
+    db = get_db()
+    db.execute(drop_sql_cmd)
+    db.commit()
+    db.execute(create_sql_cmd)
+    db.commit()
+    click.echo("WARNING: the user table has been reset, all user_id associations in the queries table are lost ...")
+
+
 @click.command('init-db')
 def init_db_command():
     """Clear the existing data and create new tables."""
@@ -201,4 +213,5 @@ def init_app(app):
     app.cli.add_command(export_rad_to_csv)
     app.cli.add_command(gen_llm_rels)
     app.cli.add_command(gen_ir_metrics)
+    app.cli.add_command(reset_users)
     app.cli.add_command(rad_merge)
