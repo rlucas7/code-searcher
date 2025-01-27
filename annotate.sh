@@ -3,7 +3,7 @@
 if [[ -z "${OPEN_AI_API_KEY}" ]]; then
   echo "The openai api key env var is not set, please set a value and reinvoke"
   exit 1
-
+fi
 echo "Enter your programming language, e.g. C, go, java, js, or python:"
 read lang
 echo "got: $lang"
