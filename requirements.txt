@@ -1,6 +1,7 @@
 # TODO: specify minimum versions for these and any max constrains
 
 bertviz
+black
 click
 flask
 IPython
@@ -20,3 +21,4 @@ scipy
 openai
 google-generativeai # NOTE: this one may be unnecessary, not sure though
 google-cloud-aiplatform
+huggingface_hub

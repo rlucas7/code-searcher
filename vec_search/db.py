@@ -12,7 +12,6 @@ from flask import current_app, g
 from pandas import read_csv, DataFrame, concat
 
 
-
 # HACK
 from vec_search.config import _SQLITE_VEC_DLL_PATH, _JSONL_LOCAL_FILE
 from .llm_rel_gen import LLMRelAssessor, Prompt, _umb_promt
@@ -25,10 +24,9 @@ def dict_factory(cursor, row):
 
 
 def get_db():
-    if 'db' not in g:
+    if "db" not in g:
         g.db = sqlite3.connect(
-            current_app.config['DATABASE'],
-            detect_types=sqlite3.PARSE_DECLTYPES
+            current_app.config["DATABASE"], detect_types=sqlite3.PARSE_DECLTYPES
         )
         g.db.enable_load_extension(True)
         g.db.load_extension(_SQLITE_VEC_DLL_PATH)
@@ -38,10 +36,12 @@ def get_db():
         g.db.row_factory = dict_factory
     return g.db
 
+
 def close_db(e=None):
-    db = g.pop('db', None)
+    db = g.pop("db", None)
     if db is not None:
         db.close()
+
 
 def init_db():
     db = get_db()
@@ -50,12 +50,12 @@ def init_db():
     sqlite_vec.load(g.db)
     db.enable_load_extension(False)
 
-    #TODO: make this a log instead
+    # TODO: make this a log instead
     vec_version = db.execute("select vec_version()").fetchone()
     print(f"vec_version={vec_version}")
 
-    with current_app.open_resource('schema.sql') as f:
-        db.executescript(f.read().decode('utf8'))
+    with current_app.open_resource("schema.sql") as f:
+        db.executescript(f.read().decode("utf8"))
 
     # insert the vectors
     DDL_vec_insert_cmd = """insert into vec_items(rowid, embedding)
@@ -69,8 +69,21 @@ def init_db():
 
     with jsonlines.open(_JSONL_LOCAL_FILE) as reader:
         for idx, obj in enumerate(reader, start=1):
-            db.execute(DDL_vec_insert_cmd, [idx, sqlite_vec.serialize_float32(obj['embeddings'])])
-            db.execute(DDL_content_insert_cmd, [idx, obj['func_name'], obj['path'], obj['sha'], obj['original_string'], obj['docstring']])
+            db.execute(
+                DDL_vec_insert_cmd,
+                [idx, sqlite_vec.serialize_float32(obj["embeddings"])],
+            )
+            db.execute(
+                DDL_content_insert_cmd,
+                [
+                    idx,
+                    obj["func_name"],
+                    obj["path"],
+                    obj["sha"],
+                    obj["original_string"],
+                    obj["docstring"],
+                ],
+            )
     db.commit()
 
     # now confirm the vectors are loaded to the sqlite db instance in flask
@@ -97,7 +110,7 @@ def init_db():
     db.close()
 
 
-@click.command('reset-users')
+@click.command("reset-users")
 def reset_users():
     drop_sql_cmd = "DROP TABLE IF EXISTS user;"
     create_sql_cmd = "CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL);"
@@ -106,60 +119,89 @@ def reset_users():
     db.commit()
     db.execute(create_sql_cmd)
     db.commit()
-    click.echo("WARNING: the user table has been reset, all user_id associations in the queries table are lost ...")
+    click.echo(
+        "WARNING: the user table has been reset, all user_id associations in the queries table are lost ..."
+    )
 
 
-@click.command('init-db')
+@click.command("init-db")
 def init_db_command():
     """Clear the existing data and create new tables."""
     init_db()
-    click.echo('Initialized the database.')
+    click.echo("Initialized the database.")
 
 
-@click.command('export-rad-to-csv')
-@click.argument('filename', type=click.Path(exists=False))
+@click.command("export-rad-to-csv")
+@click.argument("filename", type=click.Path(exists=False))
 def export_rad_to_csv(filename):
     click.echo("Now processing")
     click.echo(click.format_filename(filename))
     db = sqlite3.connect(
-        current_app.config['DATABASE'],
-        detect_types=sqlite3.PARSE_DECLTYPES
+        current_app.config["DATABASE"], detect_types=sqlite3.PARSE_DECLTYPES
     )
     db.row_factory = dict_factory
-    with open('vec_search/RAD.sql', 'r') as f:
+    with open("vec_search/RAD.sql", "r") as f:
         query = f.read()
-    with open(filename, 'w', newline='\n') as csv_file:
-        fieldnames = ['query_id', 'post_id', 'user_id', 'relevances', 'rank', 'distance', 'query', 'doc', 'code']
-        dw = csv.DictWriter(csv_file, delimiter='|', quotechar='"', fieldnames=fieldnames, lineterminator='\r\n')
+    with open(filename, "w", newline="\n") as csv_file:
+        fieldnames = [
+            "query_id",
+            "post_id",
+            "user_id",
+            "relevances",
+            "rank",
+            "distance",
+            "query",
+            "doc",
+            "code",
+        ]
+        dw = csv.DictWriter(
+            csv_file,
+            delimiter="|",
+            quotechar='"',
+            fieldnames=fieldnames,
+            lineterminator="\r\n",
+        )
         dw.writeheader()
         for row in db.execute(query).fetchall():
             dw.writerow(row)
     click.echo(f"relevance results written to {click.format_filename(filename)}")
 
-sqlite3.register_converter(
-    "timestamp", lambda v: datetime.fromisoformat(v.decode())
-)
 
-@click.command('gen-llm-rels')
-@click.argument('filename', type=click.Path(exists=True))
-@click.argument('output_filename', type=click.Path(exists=False))
-@click.argument('llm_model', type=str, default='openai')
-@click.argument('dupstrat', type=str, default='takelast')
+sqlite3.register_converter("timestamp", lambda v: datetime.fromisoformat(v.decode()))
+
+
+@click.command("gen-llm-rels")
+@click.argument("filename", type=click.Path(exists=True))
+@click.argument("output_filename", type=click.Path(exists=False))
+@click.argument("llm_model", type=str, default="openai")
+@click.argument("dupstrat", type=str, default="takelast")
 def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
     ## NOTE:
     # 1. this assumes a file in the format exported by the export click command above
     # has been executed locally
     # because there may be vacillation by the human the relevance column may have multiple
     # entries, these are stored as `|0,1,...|`
-    if dupstrat == 'takelast':
+    if dupstrat == "takelast":
         # NOTE: you may want to vary duplicate handling strategies here
         func = lambda x: x.split(",").pop()
     else:
-        raise ValueError("error: currently only 'takelast' is supported for dupstrat...")
+        raise ValueError(
+            "error: currently only 'takelast' is supported for dupstrat..."
+        )
     convs = {"relevances": func}
     # rows2skip = [4] # use with skiprows=
-    usecols = ["query_id", "post_id", "user_id", "relevances", "rank", "distance", "query", "doc", "code"]
-    df = read_csv(filename, sep='|', header=0, converters=convs, usecols=usecols)
+    usecols = [
+        "query_id",
+        "post_id",
+        "user_id",
+        "relevances",
+        "rank",
+        "distance",
+        "query",
+        "doc",
+        "code",
+    ]
+    df = read_csv(filename, sep="|", header=0, converters=convs, usecols=usecols)
     click.echo(df.head())
     click.echo(df.shape)
     prompt = Prompt(_umb_promt)
@@ -167,12 +209,13 @@ def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
     llm_rel.generate_rel(parse=True)
     click.echo("all done...")
 
+
 # NOTE: while we could invole `gen-llm-rels` inside this cmd
 # clicks in clicks are discouraged, for more:
 # https://click.palletsprojects.com/en/stable/advanced/#invoking-other-commands
 # plus this gives us a better workflow for inspecting intermediate outputs
-@click.command('gen-ir-metrics')
-@click.argument('filename', type=click.Path(exists=True))
+@click.command("gen-ir-metrics")
+@click.argument("filename", type=click.Path(exists=True))
 def gen_ir_metrics(filename):
     # we assume input is the output of `gen-llm-rels`
     df = read_csv(filename)
@@ -184,26 +227,44 @@ def gen_ir_metrics(filename):
 
 # NOTE: `nargs=-1` indicates an arbitrary number
 # we expect at least 2
-@click.command('rad-merge', context_settings={"ignore_unknown_options": True})
-@click.argument('filenames', nargs=-1, type=click.Path(exists=True))
-@click.argument('output_filename', type=click.Path(exists=False))
+@click.command("rad-merge", context_settings={"ignore_unknown_options": True})
+@click.argument("filenames", nargs=-1, type=click.Path(exists=True))
+@click.argument("output_filename", type=click.Path(exists=False))
 def rad_merge(filenames, output_filename):
     # we assume input is the output of `gen-llm-rels` so they're in that format
-    assert len(filenames) >= 2, f"expected at least 2 files but got {len(filenames)} ..."
+    assert (
+        len(filenames) >= 2
+    ), f"expected at least 2 files but got {len(filenames)} ..."
     # setup DF
-    usecols = ["query_id", "post_id", "user_id", "relevances", "rank", "distance", "query", "doc", "code"]
+    usecols = [
+        "query_id",
+        "post_id",
+        "user_id",
+        "relevances",
+        "rank",
+        "distance",
+        "query",
+        "doc",
+        "code",
+    ]
     func = lambda x: x.split(",").pop()
     convs = {"relevances": func}
     click.echo(f"basing dataframe off of {click.format_filename(filenames[0])} ...")
-    dfs = [read_csv(filenames[0], sep='|', header=0, converters=convs, usecols=usecols)]
+    dfs = [read_csv(filenames[0], sep="|", header=0, converters=convs, usecols=usecols)]
     for filename in filenames[1:]:
         click.echo(f"merging dataframes: {click.format_filename(filename)} ...")
-        dfs.append(read_csv(filename, sep='|', header=0, converters=convs, usecols=usecols))
+        dfs.append(
+            read_csv(filename, sep="|", header=0, converters=convs, usecols=usecols)
+        )
     df = concat(dfs, axis=0)
     print(df.head())
     print(df.shape)
-    click.echo(f"writing merged dataframes: {click.format_filename(output_filename)} ...")
-    df.to_csv(output_filename, sep='|', quotechar='"', columns=usecols, lineterminator='\r\n')
+    click.echo(
+        f"writing merged dataframes: {click.format_filename(output_filename)} ..."
+    )
+    df.to_csv(
+        output_filename, sep="|", quotechar='"', columns=usecols, lineterminator="\r\n"
+    )
     click.echo("all done ...")
 
 
