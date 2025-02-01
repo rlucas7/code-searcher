@@ -207,6 +207,24 @@ def rad_merge(filenames, output_filename):
     click.echo("all done ...")
 
 
+@click.command('docs-cov-top-level')
+@click.argument('filenames', nargs=-1, type=click.Path(exists=True))
+def docs_cov_top_level(filenames):
+    # for a given indexed repo determine how much indexed code has docs
+    for file in filenames:
+        no_docs_cnt, ttl_entities = 0, 0
+        print(f"Processing file: {file}")
+        with jsonlines.open(file) as reader:
+            for _, obj in enumerate(reader, start=1):
+                # NOTE: in the indexing code I use this string literal if no docs
+                if obj['docstring'] == 'NO-DOCs':
+                    no_docs_cnt +=1
+                ttl_entities += 1
+        print(f"Total Function Declarations: {ttl_entities}")
+        print(f"Total Function Declarations without docs: {no_docs_cnt}")
+        print(f"Proportion without docs: {round(100*no_docs_cnt/ttl_entities, 2)}%")
+
+
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
@@ -215,3 +233,4 @@ def init_app(app):
     app.cli.add_command(gen_ir_metrics)
     app.cli.add_command(reset_users)
     app.cli.add_command(rad_merge)
+    app.cli.add_command(docs_cov_top_level)

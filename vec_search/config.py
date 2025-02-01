@@ -38,7 +38,7 @@ AI_MODEL = 'microsoft/codebert-base-mlm'
 # Some of these entries are used for the browser gui only
 # but might be used for other items in future, e.g. link via file:// to the
 # local location (on disk) etc.
-_JSONL_LOCAL_FILE = "Collections-python.jsonl"
+_JSONL_LOCAL_FILE = "Collections-C.jsonl"
 
 # this corresponds to the sub-directory under space that has the sqlite extension
 # development environment
