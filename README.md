@@ -220,7 +220,7 @@ to see the schema for all tables in the REPL environment:
 SELECT * FROM sqlite_master WHERE type='table';
 ```
 
-# LLM annotation workflow (WIP-work in progress)
+# LLM annotation workflow
 
 A backend/batch workflow where relevances are assessed outside of a human workflow
 is the behavior currently supported. Assuming in the previous step you wrote the human generated
@@ -241,12 +241,17 @@ flask --app vec_search gen-llm-rels <input-csv> <output-csv> <llm-model-name> <d
 
 The defaults for the last 2 are `'openai'` and `'takelast'`.
 
-Also supported for `llm-model-name` are: `gemini`, more to be added.
+Also supported for `llm-model-name` are: `gemini`, and `aws`.
 
 There prompt is in the `llm_rel_gen.py` module, we use the umbrella prompt.
 
-Note: if you use the openai llm you need an api key in `OPEN_AI_API_KEY` env var, if you use the gemini model you need the `GCP_PROJECT_ID` env var
-set to a project which has the necessary privileges and you need to modify the bucket names for your project.
+Notes:
+- If you use the openai llm you need an api key in `OPEN_AI_API_KEY` environment variable.
+- If you use the gemini model you need the `GCP_PROJECT_ID` environment variable.
+  set to a project which has the necessary privileges and you need to modify the bucket names for your project.
+- If you use the `aws` command, you need:
+  `ACCESS_KEY`, `SECRET_KEY`, `AWS_REGION`, `AWS_ACCT_ID`, `BUCKET_NAME` all set to appropriate values for the
+  AWS account and organization used. Also, you'll need to create an IAM role that can be assumed with the appropriate permissions and name it `bedrock-batch-role` or rename the role in the `bedrock_batch.py` module.
 
 
 For TODOs cf. [this open issue](https://github.com/rlucas7/code-searcher/issues/10)
