@@ -143,7 +143,7 @@ sqlite3.register_converter(
 @click.command('gen-llm-rels')
 @click.argument('filename', type=click.Path(exists=True))
 @click.argument('output_filename', type=click.Path(exists=False))
-@click.argument('llm_model', type=str, default='openai')
+@click.argument('llm_model', type=click.Choice(['openai', 'gemini', 'aws']))
 @click.argument('dupstrat', type=str, default='takelast')
 def gen_llm_rels(filename, output_filename, llm_model, dupstrat):
     ## NOTE:
