@@ -16,7 +16,6 @@ from pandas import DataFrame, concat
 
 # llm clients
 import vertexai
-import openai
 
 from openai import OpenAI
 from vertexai.batch_prediction import BatchPredictionJob
@@ -73,7 +72,6 @@ class LLMRelAssessor(LLMRelAssessorBase):
             api_key = os.environ["OPEN_AI_API_KEY"]
             self.client = OpenAI(api_key=api_key)
         elif model_name == "gemini":
-            # requires a project setup in google cloud-make env
             PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
             LOCATION = os.environ.get("GCP_LOCATION", "us-central1")
             vertexai.init(project=PROJECT_ID, location=LOCATION)
@@ -82,6 +80,10 @@ class LLMRelAssessor(LLMRelAssessorBase):
             model = "gemini-1.5-pro-001"
             self.client = BatchPredictionJob
             self.model_name = model
+        elif model_name == "aws":
+            # NOTE: aws code is in bedrock_batch.py
+            self.model_name = "us.amazon.nova-lite-v1:0"
+            self.client = None
         else:
             raise ValueError(f"model {self.model_name} is not currently supported ...")
 
@@ -92,9 +94,10 @@ class LLMRelAssessor(LLMRelAssessorBase):
             for index, row in self.df.iterrows():
                 print(f"processing index: {index} ...")
                 # access of all entries follows via column name as key
-                query = row["query"]
-                passage = row["doc"] + "\n\n\n" + row["query"]
-                tp = {"query": query, "passage": passage}
+                query = row['query']
+                passage = row['doc'] + "\n\n\n" + row['code']
+                tp = {'query': query, 'passage': passage}
+
                 content = self.prompt.safe_substitute(tp)
                 response = self.client.chat.completions.create(
                     messages=[
@@ -122,13 +125,12 @@ class LLMRelAssessor(LLMRelAssessorBase):
             input_bucket_name = "batch-llm-relevance-inputs"
             output_bucket_name = "gemini-completions-batch"
             storage_client = storage.Client()
-            # NOTE: annoyingly a generic 'gemini-1.5-pro' will raise an error
             # format df and write to `input_bucket`
             with open("./examples.jsonl", "w") as f:
                 for index, row in self.df.iterrows():
-                    query = row["query"]
-                    passage = row["doc"] + "\n\n\n" + row["query"]
-                    tp = {"query": query, "passage": passage}
+                    query = row['query']
+                    passage = row['doc'] + "\n\n\n" + row['code']
+                    tp = {'query': query, 'passage': passage}
                     content = self.prompt.safe_substitute(tp)
                     r = {
                         "request": {
@@ -196,6 +198,10 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 .apply(lambda x: max(0, min(int(x[1].strip()), 1)))
             )
             c_df.to_csv(self.output_filename)
+        elif self.model_name == "us.amazon.nova-lite-v1:0":
+            from .bedrock_batch import bb
+            print("aws bedrock batch workflow starting ...")
+            bb(df=self.df, prompt=self.prompt, output_filename=self.output_filename)
         else:
             raise NotImplementedError(
                 f"generate_rel for client: {self.client!r} not implemented..."
@@ -294,78 +300,3 @@ format of:
 
 ##final score: score without providing any reasoning.
 """
-
-_llm_rel_assess = """
-You are a search quality rater evaluating the relevance
-of web pages. Given a query and a web page, you must
-provide a score on an integer scale of 0 to 2 with the
-following meanings:
-2 = highly relevant, very helpful for this query
-1 = relevant, may be partly helpful but might contain
-other irrelevant content
-0 = not relevant, should never be shown for this query
-Assume that you are writing a report on the subject of the
-topic. If you would use any of the information contained
-in the web page in such a report, mark it 1. If the web page
-is primarily about the topic, or contains vital information
-about the topic, mark it 2. Otherwise, mark it 0.
-
-Query
-A person has typed
-$query
-into a search engine.
-
-They were looking for:
-$narrative
-
-Result
-Consider the following web page.
-—BEGIN CONTENT—
-$passage
-—END CONTENT—
-Instructions
-Split this problem into steps:
-
-Measure how well the content matches a likely intent of
-the query (M).
-
-Measure how trustworthy the web page is (T).
-
-Consider the aspects above and the relative importance
-of each, and decide on a final score (O).
-
-Produce a JSON array of scores without providing any
-reasoning. Example: [{"M": 2, "T": 1, "O": 1}, {"M":
-1 . . .
-Results
-[{
-"""
-
-# Note the narrative for the second prompt is unlikely to be provided
-# given that we do not have a browser worflow interface setup for this part-yet.
-
-# TODO: make the narrative optional
-# TODO: implement the narrative input workflow
-
-
-if __name__ == "__main__":
-    ## NOTE: intended for lightweight spot checking during dev work only...
-    prompt = Prompt(_umb_promt)
-    llm_rel = LLMRelAssessor(prompt=prompt)
-    # NOTE: if you switch passage with, say 'ok?' the returned score flips 0 -> 3...
-    tp = {"query": "Say this is a test", "passage": "say this is a test"}
-    resp = llm_rel.generate_rel(template_params=tp)
-    # NOTE: not sure if other llm clients have the `to_dict` on their responses...
-    rd = resp.to_dict()
-    if len(rd["choices"]) > 1:
-        print("multiple choices in response, taking the first...")
-    choice = rd["choices"][0]
-    stuff = {
-        "llm_client": "openai",
-        "msg-id": rd["id"],
-        "model-id": rd["model"],
-        "finish-reason": choice["finish_reason"],
-        "message": choice["message"]["content"],
-        "usage": rd["usage"],
-    }
-    print(stuff)
