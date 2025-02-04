@@ -35,6 +35,6 @@ flask --app vec_search export-rad-to-csv rad-$lang-lang-$initials.csv
 for provider in aws openai gemini;
 do
   echo "Generating relevances for: $provider";
-  flask --app vec_search gen-llm-rels rad-$lang-lang-$initials.csv llm_gen_rel-$provider-$lang-$initials.csv
+  flask --app vec_search gen-llm-rels rad-$lang-lang-$initials.csv llm_gen_rel-$provider-$lang-$initials.csv $provider
   flask --app vec_search gen-ir-metrics llm_gen_rel-$provider-$lang-$initials.csv > metrics-$provider-$lang-$initials.txt
 done;
