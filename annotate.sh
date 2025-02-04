@@ -4,6 +4,14 @@ if [[ -z "${OPEN_AI_API_KEY}" ]]; then
   echo "The openai api key env var is not set, please set a value and reinvoke"
   exit 1
 fi
+
+# do google authentication to go through the project setup for gemini
+gcloud auth application-default login
+
+
+# login in huggingface hub to get codebert and save token on machine
+huggingface-cli login
+
 echo "Enter your programming language, e.g. C, go, java, js, or python:"
 read lang
 echo "got: $lang"
