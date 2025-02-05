@@ -1,7 +1,8 @@
+import sys
+
 import sqlite_vec
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 from torch import tensor, reshape, FloatTensor
-from transformers import RobertaTokenizer, RobertaForMaskedLM
 from werkzeug.exceptions import abort
 
 from bertviz.transformers_neuron_view import RobertaModel as RM, RobertaTokenizer as RT
@@ -18,8 +19,16 @@ from vec_search.config import AI_MODEL as MODEL
 bp = Blueprint("search", __name__)
 
 
-_MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
-_TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
+if str(sys.argv[3]) == "run":
+    # If other commands are added to the app that need access to
+    # the LLM then they need to be added here. Currenly using 'run'
+    # in this case-and only this case for now-we import the HF LLM
+    # the basic purpose here is to not do a reload for every invocation
+    # of a cli cmd
+    from transformers import RobertaTokenizer, RobertaForMaskedLM
+    from vec_search.config import AI_MODEL as MODEL
+    _MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
+    _TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
 
 
 # we hack the GET & disambiguate a search
@@ -37,7 +46,6 @@ def index():
         q = request.args.get("q")
         if g.user is not None:
             # if user is logged in then record the query to query table
-            print(q, type(q), g.user["id"], "writing query to query table")
             SAVE_QUERY_CMD = "INSERT INTO queries(query, user_id) values (?, ?)"
             db.execute(SAVE_QUERY_CMD, [q, g.user["id"]])
             db.commit()
@@ -104,7 +112,6 @@ def detail():
     # Now we construct a string of the query + post-id to feed through the model
     # and get the cross attentions (query -> post-id) for rendering visualiztion
     # in the browser. This uses BertViz-which relies on d3.js
-    model_type = "roberta"
     model_version = "roberta-base"
     model = RM.from_pretrained(model_version, output_attentions=True)
     tokenizer = RT.from_pretrained(model_version, do_lower_case=True)
@@ -146,16 +153,12 @@ def detail():
 @bp.route("/relevance", methods=["GET"])
 def relevance():
     db = get_db()
-    print("in relevance route ...")
     post_id = int(request.args.get("post-id"))
     query_id = int(request.args.get("query-id"))
     rel = 1 if request.args.get("relevance") == "yes" else 0
     rank = int(request.args.get("rank"))
     dist = float(request.args.get("distance"))
     rel_record = [post_id, query_id, rel, rank, dist]
-    print("before relevance insert")
-    for row in db.execute("SELECT * FROM query_relevances").fetchall():
-        print(row.keys())
     # store the relevance data ...
     # NOTE: the relevance table has no constraint on (post_id, query_id)
     # being unique (to not break workflow of human relevance change yes->no or vice versa)
@@ -164,9 +167,6 @@ def relevance():
     SAVE_RELEVANCE_CMD = "INSERT INTO query_relevances(post_id, query_id, relevance, rank, distance) values (?, ?, ?, ?, ?)"
     db.execute(SAVE_RELEVANCE_CMD, rel_record)
     db.commit()
-    print("after relevance insert")
-    for row in db.execute("select * from query_relevances").fetchall():
-        print(row)
     # NOTE: we expect no returning content from this endpoint but we do
     # send back a simple status to ACK ...
     return {"status": "ok"}
