@@ -21,8 +21,8 @@ iv. Mean ave Precision@k
 
 from itertools import accumulate
 from math import isclose
-from typing import Union
 
+from flask import current_app as app
 from scipy.stats import spearmanr, kendalltau, geom
 from pandas import DataFrame, crosstab
 

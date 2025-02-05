@@ -11,6 +11,7 @@ import boto3
 import uuid
 import json
 
+from flask import current_app as app
 from pandas import DataFrame, notna, concat
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -35,7 +36,7 @@ def parse_resp(x: list[str]) -> int:
     try:
         rel = max(0, min(int(x[1].strip()), 1))
     except ValueError as e:
-        print(f"ValueError: {e}...")
+        app.logger.error(f"ValueError: {e}, continuing with 0 relevance ...")
         rel = 0
     return rel
 
@@ -175,16 +176,16 @@ def bb(df, prompt, output_filename):
         prompt=prompt,
         base_config=config
     )
-    print(f"Uploading to s3://{BUCKET_NAME}/{bucket_prefix}")
+    app.logger.info(f"Uploading to s3://{BUCKET_NAME}/{bucket_prefix}")
     s3 = boto3.client('s3',
         aws_access_key_id=ACCESS_KEY,
         aws_secret_access_key=SECRET_KEY,
         region_name=AWS_REGION
     )
     s3.upload_file(Filename='./examples.jsonl', Bucket=BUCKET_NAME, Key=bucket_prefix)
-    print(f"Uploading to s3 complete")
+    app.logger.info(f"Uploading to s3 complete")
     # added from here down
-    print("invoking bedrock for relevances")
+    app.logger.info("invoking bedrock for relevances")
     inputDataConfig=({
         "s3InputDataConfig": {
             "s3Uri": f"s3://{BUCKET_NAME}/{bucket_prefix}"
@@ -202,7 +203,7 @@ def bb(df, prompt, output_filename):
         aws_secret_access_key=SECRET_KEY,
         region_name=AWS_REGION
     )
-    print("invoking batch job")
+    app.logger.info("invoking batch job")
     # get first part of the uuid
     a_uuid = hex(uuid.uuid4().fields[0])[2:]
     response = bedrock.create_model_invocation_job(
@@ -212,7 +213,7 @@ def bb(df, prompt, output_filename):
         inputDataConfig=inputDataConfig,
         outputDataConfig=outputDataConfig
     )
-    print(response)
+    app.logger.info(response)
     jobArn = response.get('jobArn')
     poll_cnt, max_poll_cnt = 1, 20
 
@@ -220,21 +221,21 @@ def bb(df, prompt, output_filename):
         sleep(30)
         jobInfo = bedrock.get_model_invocation_job(jobIdentifier=jobArn)
         if jobInfo['status'] == "Completed":
-            print(f"job: {jobArn} finished")
+            app.logger.info(f"job: {jobArn} finished")
             break
         else:
-            print(f"job: {jobArn} is in state: {jobInfo['status']}")
+            app.logger.info(f"job: {jobArn} is in state: {jobInfo['status']}")
             poll_cnt += 1
-            print("---")
+            app.logger.info("---")
     else:
-        print(f"max polling iteration: {max_poll_cnt} reached ...")
+        app.logger.info(f"max polling iteration: {max_poll_cnt} reached ...")
 
     if jobInfo['status'] == "Completed":
         # the jobArn characters are the same as the results folder in bucket
         jobDir = jobArn.split('/')[-1]
         batch_out = f"{jobDir}/{bucket_prefix}.out"
         s3.download_file(BUCKET_NAME, batch_out, f"bedrock_batch_output_{jobDir}.jsonl")
-        print("output file downloaded")
+        app.logger.info("output file downloaded")
         # TODO: here parse the output file into the desired format...
         data = []
         with open(f"bedrock_batch_output_{jobDir}.jsonl", 'r') as f:

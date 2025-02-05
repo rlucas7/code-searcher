@@ -11,6 +11,7 @@ import os
 
 DEBUG = True
 PREFERRED_URL_SCHEME = "http"
+LOG_LEVEL = "DEBUG" # this should always be set to smth
 SECRET_KEY = "dev"
 
 # NOTE: this assumes you always call from the repo root which is what

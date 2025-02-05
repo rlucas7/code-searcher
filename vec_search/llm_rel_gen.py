@@ -12,6 +12,7 @@ from string import Template
 from time import sleep
 from typing import Union
 
+from flask import current_app as app
 from pandas import DataFrame, concat
 
 # llm clients
@@ -92,7 +93,8 @@ class LLMRelAssessor(LLMRelAssessorBase):
             ## generate the llm relevance determinations
             llm_gen_data = defaultdict(list)
             for index, row in self.df.iterrows():
-                print(f"processing index: {index} ...")
+                #TODO: refactor and make this a batch workflow too
+                app.logger.debug(f"processing index: {index} ...")
                 # access of all entries follows via column name as key
                 query = row['query']
                 passage = row['doc'] + "\n\n\n" + row['code']
@@ -148,7 +150,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
             # now upload the file to gcs
             blob = storage_client.bucket(input_bucket_name).blob("examples.jsonl")
             blob.upload_from_filename("./examples.jsonl")
-            print("upload to gcs finished...")
+            app.logger.info("upload to gcs finished...")
             sleep(10)
             batch_prediction_job = BatchPredictionJob.submit(
                 source_model=self.model_name,
@@ -157,25 +159,25 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 output_uri_prefix=f"gs://{output_bucket_name}",
             )
             # Check job status
-            print(f"Job resource name: {batch_prediction_job.resource_name}")
-            print(
+            app.logger.info(f"Job resource name: {batch_prediction_job.resource_name}")
+            app.logger.info(
                 f"Model resource name with the job: {batch_prediction_job.model_name}"
             )
-            print(f"Job state: {batch_prediction_job.state.name}")
+            app.logger.info(f"Job state: {batch_prediction_job.state.name}")
 
             # Refresh the job until complete
             while not batch_prediction_job.has_ended:
                 sleep(30)
                 batch_prediction_job.refresh()
                 # this seems preferrable to the given example if/elif beneath
-                print(f"Job state: {batch_prediction_job.state.name}")
+                app.logger.info(f"Job state: {batch_prediction_job.state.name}")
                 # Check if the job succeeds
                 if batch_prediction_job.has_succeeded:
-                    print("Job succeeded!")
+                    app.logger.info("Job succeeded!")
                 elif batch_prediction_job.error != "":
-                    print(f"Job failed: {batch_prediction_job.error} ...")
+                    app.logger.info(f"Job failed: {batch_prediction_job.error} ...")
             # Give the location of the output in gcs
-            print(f"Job output location: {batch_prediction_job.output_location}")
+            app.logger.info(f"Job output location: {batch_prediction_job.output_location}")
             # now given the output location we need to parse and handle...
             bucket = storage_client.bucket(output_bucket_name)
             # the convention seems to be this...
@@ -202,7 +204,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
             c_df.to_csv(self.output_filename)
         elif self.model_name == "us.amazon.nova-lite-v1:0":
             from .bedrock_batch import bb
-            print("aws bedrock batch workflow starting ...")
+            app.logger.info("aws bedrock batch workflow starting ...")
             bb(df=self.df, prompt=self.prompt, output_filename=self.output_filename)
         else:
             raise NotImplementedError(
@@ -225,7 +227,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
         if isinstance(self.client, OpenAI):
             rd = resp.to_dict()
             if len(rd["choices"]) > 1:
-                print("multiple choices in response, taking the first...")
+                app.logger.info("multiple choices in response, taking the first...")
             choice = rd["choices"][0]
             # stuff ...
             stuff["msg-id"] = rd["id"]
@@ -240,7 +242,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
             # NOTE: batch keynames are camelcased whereas non-batch are snake-arg!
             rd = resp
             if len(rd["candidates"]) > 1:
-                print("multiple candidates in response, taking the first...")
+                app.logger.info("multiple candidates in response, taking the first...")
             choice = rd["candidates"][0]["content"]
             stuff["msg-id"] = None
             stuff["model-id"] = rd.get("modelVersion", self.model_name)
@@ -249,7 +251,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 if k == "text":
                     stuff["message"] += v
                 else:
-                    print(f"in gemini, unk resp k,v: = {k}, {v} ...")
+                    app.logger.info(f"in gemini, unk resp k,v: = {k}, {v} ...")
             stuff["finish-reason"] = rd["candidates"][0]["finishReason"]
             llm_client = "gemini"
         else:

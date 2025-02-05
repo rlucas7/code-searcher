@@ -46,7 +46,6 @@ def index():
         q = request.args.get("q")
         if g.user is not None:
             # if user is logged in then record the query to query table
-            print(q, type(q), g.user["id"], "writing query to query table")
             SAVE_QUERY_CMD = "INSERT INTO queries(query, user_id) values (?, ?)"
             db.execute(SAVE_QUERY_CMD, [q, g.user["id"]])
             db.commit()
@@ -154,16 +153,12 @@ def detail():
 @bp.route("/relevance", methods=["GET"])
 def relevance():
     db = get_db()
-    print("in relevance route ...")
     post_id = int(request.args.get("post-id"))
     query_id = int(request.args.get("query-id"))
     rel = 1 if request.args.get("relevance") == "yes" else 0
     rank = int(request.args.get("rank"))
     dist = float(request.args.get("distance"))
     rel_record = [post_id, query_id, rel, rank, dist]
-    print("before relevance insert")
-    for row in db.execute("SELECT * FROM query_relevances").fetchall():
-        print(row.keys())
     # store the relevance data ...
     # NOTE: the relevance table has no constraint on (post_id, query_id)
     # being unique (to not break workflow of human relevance change yes->no or vice versa)
@@ -172,9 +167,6 @@ def relevance():
     SAVE_RELEVANCE_CMD = "INSERT INTO query_relevances(post_id, query_id, relevance, rank, distance) values (?, ?, ?, ?, ?)"
     db.execute(SAVE_RELEVANCE_CMD, rel_record)
     db.commit()
-    print("after relevance insert")
-    for row in db.execute("select * from query_relevances").fetchall():
-        print(row)
     # NOTE: we expect no returning content from this endpoint but we do
     # send back a simple status to ACK ...
     return {"status": "ok"}
