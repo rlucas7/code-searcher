@@ -20,6 +20,24 @@ def gen_record_id(index: int, prefix: str = "REC") -> str:
     """Generate an 11 character alphanumeric record ID."""
     return f"{prefix}{str(index).zfill(8)}"
 
+def parse_resp(x: list[str]) -> int:
+    """
+
+    Args:
+        x (list[str]): A string with the llm response from the umbrella prompt.
+
+    Raises:
+        ValueError: if x is not a string.
+
+    Returns:
+        int: A binary 0/1 value for whether the model determined the relevance (1) or not (0)
+    """
+    try:
+        rel = max(0, min(int(x[1].strip()), 1))
+    except ValueError as e:
+        print(f"ValueError: {e}...")
+        rel = 0
+    return rel
 
 class ModelType(Enum):
     TITAN_TEXT_EXPRESS = "amazon.titan-text-express-v1"
@@ -226,5 +244,5 @@ def bb(df, prompt, output_filename):
         # construct parsed data
         p_df = DataFrame({'message': data})
         c_df = concat([df, p_df], axis=1)
-        c_df['llm_rel_score'] = c_df['message'].str.split(':').apply(lambda x: max(0, min(int(x[1].strip()), 1)))
+        c_df['llm_rel_score'] = c_df['message'].str.split(':').apply(parse_resp)
         c_df.to_csv(output_filename)

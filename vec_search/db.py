@@ -1,15 +1,12 @@
 import csv
-import json
 import sqlean as sqlite3
 import sqlite_vec
-from collections import defaultdict
 from datetime import datetime
-from time import sleep
 
 import click
 import jsonlines
 from flask import current_app, g
-from pandas import read_csv, DataFrame, concat
+from pandas import read_csv, concat
 
 
 # HACK

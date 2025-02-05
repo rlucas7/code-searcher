@@ -1,7 +1,8 @@
+import sys
+
 import sqlite_vec
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 from torch import tensor, reshape, FloatTensor
-from transformers import RobertaTokenizer, RobertaForMaskedLM
 from werkzeug.exceptions import abort
 
 from bertviz.transformers_neuron_view import RobertaModel as RM, RobertaTokenizer as RT
@@ -18,8 +19,16 @@ from vec_search.config import AI_MODEL as MODEL
 bp = Blueprint("search", __name__)
 
 
-_MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
-_TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
+if str(sys.argv[3]) == "run":
+    # If other commands are added to the app that need access to
+    # the LLM then they need to be added here. Currenly using 'run'
+    # in this case-and only this case for now-we import the HF LLM
+    # the basic purpose here is to not do a reload for every invocation
+    # of a cli cmd
+    from transformers import RobertaTokenizer, RobertaForMaskedLM
+    from vec_search.config import AI_MODEL as MODEL
+    _MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
+    _TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
 
 
 # we hack the GET & disambiguate a search
@@ -104,7 +113,6 @@ def detail():
     # Now we construct a string of the query + post-id to feed through the model
     # and get the cross attentions (query -> post-id) for rendering visualiztion
     # in the browser. This uses BertViz-which relies on d3.js
-    model_type = "roberta"
     model_version = "roberta-base"
     model = RM.from_pretrained(model_version, output_attentions=True)
     tokenizer = RT.from_pretrained(model_version, do_lower_case=True)

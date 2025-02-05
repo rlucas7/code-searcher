@@ -107,6 +107,8 @@ class LLMRelAssessor(LLMRelAssessorBase):
                         }
                     ],
                     model=self.model_name,
+                    temperature=0.4,
+                    max_tokens=512
                 )
                 resp = self.parse_resp(response) if parse else response
                 for key, value in resp.items():

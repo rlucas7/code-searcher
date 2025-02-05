@@ -1,13 +1,18 @@
 import os
-
 from flask import Flask
+import sys
+import logging
 
+
+logging.basicConfig(level=logging.DEBUG)
 
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
+    # TODO: rewire all the print() statements to the app.logger
     app.config.from_object("vec_search.config")
-
+    app.logger.addHandler(logging.StreamHandler(sys.stdout))
+    app.logger.info("stdout stream handler added")
     if test_config is None:
         # load the instance config, if it exists, when not testing
         app.config.from_pyfile("config.py", silent=True)
