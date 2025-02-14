@@ -15,10 +15,10 @@ Then navigate into directory
 cd sqlite-vec
 ```
 
-2. While in the sqlite-vec cloned repo, get the amalgamated build of sqlite locally into a directory using step by step the commands in this script (skip superfluous line 4) https://github.com/asg017/sqlite-vec/blob/aa9f049a8b45f46cc68909358311564a1917f63f/scripts/vendor.sh 
+2. While in the sqlite-vec cloned repo, get the amalgamated build of sqlite locally into a directory using step by step the commands in this script (skip superfluous line 4) https://github.com/asg017/sqlite-vec/blob/aa9f049a8b45f46cc68909358311564a1917f63f/scripts/vendor.sh
 
 3. Now unless laptop was configured to use gcc, it likely uses clang for C compilations. To get the build to use clang swap the CC env var with clang here
-https://github.com/asg017/sqlite-vec/blob/aa9f049a8b45f46cc68909358311564a1917f63f/Makefile#L11 in the makefile. 
+https://github.com/asg017/sqlite-vec/blob/aa9f049a8b45f46cc68909358311564a1917f63f/Makefile#L11 in the makefile.
 
 4. {optional} Turn on the verbose flag to watch more of what was happening and to aid in any debugging. To generate verbose add a `dash v` here:
 https://github.com/asg017/sqlite-vec/blob/aa9f049a8b45f46cc68909358311564a1917f63f/Makefile#L100
@@ -41,8 +41,8 @@ Then run sample-usage line by line from here https://github.com/asg017/sqlite-ve
 ```bash
 .load ./dist/vec0
 ```
-if you are able to run the example SQL lines from the linked file then you have successfully build the executable for sqlite and the vector extension. 
-then next step is to setup the app to run locally, the app uses the vector extension. 
+if you are able to run the example SQL lines from the linked file then you have successfully build the executable for sqlite and the vector extension.
+then next step is to setup the app to run locally, the app uses the vector extension.
 
 Following steps were tested for Python 3.11 (using Mac M1 and Mac intel chips).
 
@@ -253,8 +253,6 @@ Notes:
   `ACCESS_KEY`, `SECRET_KEY`, `AWS_REGION`, `AWS_ACCT_ID`, `BUCKET_NAME` all set to appropriate values for the
   AWS account and organization used. Also, you'll need to create an IAM role that can be assumed with the appropriate permissions and name it `bedrock-batch-role` or rename the role in the `bedrock_batch.py` module.
 
-
-For TODOs cf. [this open issue](https://github.com/rlucas7/code-searcher/issues/10)
 
 # Metrics generation
 To generate IR metrics for the data once placed into pandas df(s).
