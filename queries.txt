@@ -1,0 +1,33 @@
+is there a peek method or similar for a stack?
+is the stack using a linked list or an array?
+is the list singly or doubly linked?
+does the list have a middle method which returns a middle element?
+does the list have a reverse method which reverses the elements of the list?
+Is the set using a map or an array?
+does the set support a custom hash function?
+does the map support arbitrary value types?
+does the map support a custom hash function?
+is the ordered set using a treemap or a skiplist or something else?
+can you use arbitrary comparators in the ordered set?
+Is the queue using an array or a linked list or something else?
+is there a double ended queue supported?
+is this a min heap, a max heap or both?
+is the heap a binomial heap?
+What is the terminating character used in the trie?
+does the trie compress prefixes?
+what methods are available for a stack data structure?
+what methods are available for a linked list data structure?
+what methods are available for a set data structure?
+what methods are available for a map data structure?
+what methods are available for an ordered set  data structure?
+what methods are available for a queue data structure?
+what methods are available for a heap data structure?
+what methods are available for a trie data structure?
+is there an iterator for the stack data structure?
+is there an iterator for the linked list data structure?
+is there an iterator for the set data structure?
+is there an iterator for the map data structure?
+is there an iterator for the ordered set data structure?
+is there an iterator for the queue data structure?
+is there an iterator for the heap data structure?
+is there an iterator for the trie data structure?
