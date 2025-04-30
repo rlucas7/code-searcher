@@ -52,3 +52,10 @@ _SQLITE_WORKSPACE = "sqlite-ext" if os.environ.get("USER") == "rlucas" else "ail
 _SQLITE_VEC_DLL_PATH = (
     f"/Users/{os.environ.get('USER')}/{_SQLITE_WORKSPACE}/sqlite-vec/dist/vec0.dylib"
 )
+
+# this config toggles the semantic retriever (true) vs a sparse retriever (false).
+# Currently, codebert is the supported retriever.
+SEMANTIC = False
+
+# this value reflects the number of results on the page
+N = 10
