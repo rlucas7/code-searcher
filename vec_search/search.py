@@ -14,7 +14,7 @@ from vec_search.db import get_db
 from vec_search.retriever import Retriever
 # HACK: for now hard codes the location of the config file for AI MODEL
 from vec_search.config import AI_MODEL as MODEL
-from vec_search.config import SEMANTIC, _JSONL_LOCAL_FILE, N
+from vec_search.config import SEMANTIC, _JSONL_LOCAL_FILE, N, DEVICE
 
 bp = Blueprint("search", __name__)
 
@@ -25,10 +25,14 @@ if str(sys.argv[3]) == "run":
     # in this case-and only this case for now-we import the HF LLM
     # the basic purpose here is to not do a reload for every invocation
     # of a cli cmd
-    from transformers import RobertaTokenizer, RobertaForMaskedLM
-    from vec_search.config import AI_MODEL as MODEL
-    _MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
-    _TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
+    if MODEL == "microsoft/codebert-base-mlm":
+        from transformers import RobertaTokenizer, RobertaForMaskedLM
+        _MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
+        _TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
+    elif MODEL == "Salesforce/codet5p-110m-embedding":
+        from transformers import AutoModel, AutoTokenizer
+        _MODEL = AutoModel.from_pretrained(MODEL, trust_remote_code=True).to(DEVICE)
+        _TOKENIZER = AutoTokenizer.from_pretrained(MODEL, trust_remote_code=True)
 
 
 # we hack the GET & disambiguate a search

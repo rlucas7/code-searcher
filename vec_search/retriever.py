@@ -9,10 +9,11 @@ import json
 import sqlite_vec
 
 from torch import tensor, reshape, FloatTensor
+from transformers import AutoModel, AutoTokenizer
 from transformers import RobertaTokenizer, RobertaForMaskedLM
 
 from vec_search.config import AI_MODEL as MODEL
-from vec_search.config import N
+from vec_search.config import N, DEVICE
 
 from flask import current_app as app
 
@@ -21,10 +22,15 @@ class Retriever:
         self.is_semantic = semantic
         self.db = db
         if self.is_semantic:
-            self._MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
-            self._TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
+            if MODEL == "Salesforce/codet5p-110m-embedding":
+                self._MODEL = AutoModel.from_pretrained(MODEL, trust_remote_code=True).to(DEVICE)
+                self._TOKENIZER = AutoTokenizer.from_pretrained(MODEL, trust_remote_code=True)
+            elif MODEL == "microsoft/codebert-base-mlm":
+                self._MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
+                self._TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
+            else:
+                raise ValueError(f"Error: Model config: {MODEL} not currently supported, please open a PR to add...")
         else: # bm25 case is assumed
-
             if filepath is not None:
                 self._set_bm25_retriever(filepath)
 
@@ -64,16 +70,25 @@ class Retriever:
             for row in self.db.execute("SELECT last_insert_rowid()").fetchall():
                 query_id = row["last_insert_rowid()"]
         if self.is_semantic:
-            app.logger.info(f"Running semantic search on query...")
-            # embed natural language query into embedding vector
-            tokens = (
-                [self._TOKENIZER.cls_token] + self._TOKENIZER.tokenize(query) + [self._TOKENIZER.eos_token]
-            )
-            raw_token_ids = tensor(self._TOKENIZER.convert_tokens_to_ids(tokens))
-            tokens_ids = reshape(raw_token_ids, (1, len(raw_token_ids)))
-            context_embeddings = self._MODEL(tokens_ids, output_hidden_states=True)
-            embeds = context_embeddings.hidden_states[-1].detach().numpy()[0, 0, :]
-            embed = embeds.tolist()
+            if MODEL == "microsoft/codebert-base-mlm":
+                app.logger.info(f"Running semantic search using codebert on query...")
+                # embed natural language query into embedding vector
+                tokens = (
+                    [self._TOKENIZER.cls_token] + self._TOKENIZER.tokenize(query) + [self._TOKENIZER.eos_token]
+                )
+                raw_token_ids = tensor(self._TOKENIZER.convert_tokens_to_ids(tokens))
+                tokens_ids = reshape(raw_token_ids, (1, len(raw_token_ids)))
+                context_embeddings = self._MODEL(tokens_ids, output_hidden_states=True)
+                embeds = context_embeddings.hidden_states[-1].detach().numpy()[0, 0, :]
+                embed = embeds.tolist()
+            elif MODEL == "Salesforce/codet5p-110m-embedding":
+                # logic for codet5+
+                app.logger.info(f"Running semantic search using codeT5+ to embed query...")
+                inputs = self._TOKENIZER.encode(query, return_tensors="pt").to(DEVICE)
+                embedding = self._MODEL(inputs)[0]
+                embed = embedding.tolist()
+            else:
+                raise ValueError(f"Error: Model config: {MODEL} not currently supported, please open a PR to add...")
             # now retrieve the top k entries
             cur = self.db.cursor()
             vec_query = f"""
@@ -129,3 +144,46 @@ class Retriever:
             for i in range(len(posts)):
                 posts[i].update({"query-id": str(query_id) + f"+post-num-{i}", "rank": str(i)})
             return posts
+
+
+class Embedder:
+    def __init__(self, hf_model: str = 'microsoft/codebert-base-mlm', device="cpu"):
+        self.device = device
+        self.hf_model = hf_model
+        if hf_model == 'microsoft/codebert-base-mlm':
+            self._MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
+            self._TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
+        elif hf_model == "Salesforce/codet5p-110m-embedding":
+            self._MODEL = AutoModel.from_pretrained(hf_model, trust_remote_code=True).to(device)
+            self._TOKENIZER = AutoTokenizer.from_pretrained(hf_model, trust_remote_code=True)
+        else:
+            raise ValueError(f"Error: hf_model = {hf_model} not currently supported, please open a PR to add...")
+
+    def embed(self, result: dict[str, Any])-> list[float]:
+        if self.hf_model == 'microsoft/codebert-base-mlm':
+            app.logger.log(level=9, msg="Embedding using codebert on result...")
+            # this logic aligns w/what I did in the vault fork
+            nl_tokens = result['docstring_tokens']
+            pl_tokens = result['code_tokens']
+            # builds up tensor: "<s> <NL-tokens> </s> <PL-tokens> </s>"
+            tokens = [self._TOKENIZER.cls_token]
+            tokens.extend(nl_tokens + [self._TOKENIZER.sep_token])
+            tokens.extend(pl_tokens + [self._TOKENIZER.eos_token])
+            raw_token_ids = self._TOKENIZER.convert_tokens_to_ids(tokens)
+            tokens_ids = reshape(tensor(raw_token_ids), (1, len(raw_token_ids)))
+            context_embeddings = self._MODEL(tokens_ids, output_hidden_states=True)
+            embeds = context_embeddings.hidden_states[-1].detach().numpy()[0, 0, :]
+            embed = embeds.tolist()
+        elif self.hf_model == "Salesforce/codet5p-110m-embedding":
+            app.logger.log(level=9, msg="using codet5+ model ...")
+            # here we work directly with the source code text because the tokenizer is somewhat different
+            # note that in this next line, inputs is the token ids...
+            inputs = self._TOKENIZER.encode(result['original_string'], return_tensors="pt").to(self.device)
+            if inputs.shape[1] > self._TOKENIZER.model_max_length:
+                app.logger.info(f"result has token length {inputs.shape[1]}...")
+                app.logger.info(f"result starts with: {result['original_string'][0:25]}...")
+            embedding = self._MODEL(inputs)[0]
+            embed = embedding.tolist()
+        else:
+            raise ValueError(f"Error: hf_model = {self.hf_model} not currently supported in `embed()`, please open a PR to add...")
+        return embed

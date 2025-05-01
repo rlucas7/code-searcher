@@ -8,9 +8,11 @@ import jsonlines
 from flask import current_app, g
 from pandas import read_csv, concat
 
+# NOTE these will need to change when config.py's AI_MODEL changes
 
 # HACK
-from vec_search.config import _SQLITE_VEC_DLL_PATH, _JSONL_LOCAL_FILE
+from vec_search.config import _SQLITE_VEC_DLL_PATH, _JSONL_LOCAL_FILE, VEC_DIM, EMBED_ON_LOAD, AI_MODEL
+from vec_search.retriever import Embedder
 from .llm_rel_gen import LLMRelAssessor, Prompt, _umb_promt
 from .ir_eval_metrics import calc_ir_metrics
 
@@ -49,10 +51,20 @@ def init_db():
 
     # TODO: make this a log instead
     vec_version = db.execute("select vec_version()").fetchone()
-    print(f"vec_version={vec_version}")
+    current_app.logger.info(f"vec_version={vec_version}")
 
+    # NOTE: here schema[:517] + "???" + schema[520:] will put triple
+    # question marks for the vector dimension of the `vec_items` table
+    # and in general we want this value to be the vector dimension from
+    # the `config.py` file. If you change the contents of `schema.sql`
+    # then the logic here breaks if changes occur before character point
+    # 519, so avoid that if at all possible. If the dimensions don't match
+    # then you'll get a somewhat informative error on what the system
+    # expected for vector dimension.
     with current_app.open_resource("schema.sql") as f:
-        db.executescript(f.read().decode("utf8"))
+        schema = f.read().decode("utf8")
+        script = schema[:517] + str(VEC_DIM) + schema[520:]
+        db.executescript(script)
 
     # insert the vectors
     DDL_vec_insert_cmd = """insert into vec_items(rowid, embedding)
@@ -63,12 +75,18 @@ def init_db():
     DDL_content_insert_cmd = """ insert into post(id, func_name, path, sha, code, doc)
         values (?, ?, ?, ?, ?, ?)
     """
-
+    embedder = Embedder(hf_model=AI_MODEL)
     with jsonlines.open(_JSONL_LOCAL_FILE) as reader:
+        current_app.logger.info("loading contents into db...")
         for idx, obj in enumerate(reader, start=1):
+            if EMBED_ON_LOAD:
+                embed = embedder.embed(obj)
+            else:
+                # here we load the pre-embedded (using codebert unless updated)
+                embed = obj["embeddings"]
             db.execute(
                 DDL_vec_insert_cmd,
-                [idx, sqlite_vec.serialize_float32(obj["embeddings"])],
+                [idx, sqlite_vec.serialize_float32(embed)],
             )
             db.execute(
                 DDL_content_insert_cmd,
@@ -84,25 +102,25 @@ def init_db():
     db.commit()
 
     # now confirm the vectors are loaded to the sqlite db instance in flask
-    query = """select vec_to_json(vec_slice(embedding, 0, 8)) from vec_items limit 10"""
+    query = """select vec_to_json(vec_slice(embedding, 0, 8)) from vec_items limit 3"""
     cur = db.cursor()
     cur.execute(query)
     all_rows = cur.fetchall()
     for v in all_rows:
-        print(v)
+        current_app.logger.info(str(v))
 
     vals = cur.execute("select count(*) from vec_items").fetchall()
-    print(f"total number of vectors stored is: {vals}")
+    current_app.logger.info(f"total number of vectors stored is: {str(vals)}")
     ps = cur.execute("select count(*) from post").fetchall()
-    print(f"total number of associated entries stored is: {ps}")
+    current_app.logger.info(f"total number of associated entries stored is: {str(ps)}")
     one = cur.execute("select * from post limit 1").fetchall()
     for v in one:
         for idx, e in enumerate(v):
-            print(idx, e)
+            current_app.logger.info(str(idx) + "   "+ str(e))
     # display to stdout the metadata for tables ...
     one = cur.execute("SELECT * FROM sqlite_master WHERE type='table';").fetchall()
     for v in one:
-        print(v)
+        current_app.logger.info(str(v))
     cur.close()
     db.close()
 
@@ -220,7 +238,7 @@ def gen_ir_metrics(filename):
     stats = calc_ir_metrics(df)
     # print all the metrics
     for k, v in stats.items():
-        print(f"{k}: {v}")
+        click.echo(f"{k}: {v}")
 
 
 # NOTE: `nargs=-1` indicates an arbitrary number
@@ -255,8 +273,8 @@ def rad_merge(filenames, output_filename):
             read_csv(filename, sep="|", header=0, converters=convs, usecols=usecols)
         )
     df = concat(dfs, axis=0)
-    print(df.head())
-    print(df.shape)
+    click.echo(df.head())
+    click.echo(df.shape)
     click.echo(
         f"writing merged dataframes: {click.format_filename(output_filename)} ..."
     )
@@ -272,16 +290,16 @@ def docs_cov_top_level(filenames):
     # for a given indexed repo determine how much indexed code has docs
     for file in filenames:
         no_docs_cnt, ttl_entities = 0, 0
-        print(f"Processing file: {file}")
+        click.echo(f"Processing file: {file}")
         with jsonlines.open(file) as reader:
             for _, obj in enumerate(reader, start=1):
                 # NOTE: in the indexing code I use this string literal if no docs
                 if obj['docstring'] == 'NO-DOCs':
                     no_docs_cnt +=1
                 ttl_entities += 1
-        print(f"Total Function Declarations: {ttl_entities}")
-        print(f"Total Function Declarations without docs: {no_docs_cnt}")
-        print(f"Proportion without docs: {round(100*no_docs_cnt/ttl_entities, 2)}%")
+        click.echo(f"Total Function Declarations: {ttl_entities}")
+        click.echo(f"Total Function Declarations without docs: {no_docs_cnt}")
+        click.echo(f"Proportion without docs: {round(100*no_docs_cnt/ttl_entities, 2)}%")
 
 
 def init_app(app):

@@ -54,6 +54,39 @@ python3 -m venv .
 python3 -m pip install -r requirements.txt
 ```
 
+## configure the app
+
+The majority of the configuration on the flask app is done in the `vec_search/config.py` module.
+There are some common config items like `DEBUG` mode that we will omit here.
+
+The primary config items that impact the workflows are:
+| Config symbol name  | Tested values                  |
+|---------------------| -------------------------------|
+| AI_MODEL  | "Salesforce/codet5p-110m-embedding","microsoft/codebert-base-mlm"|
+| VEC_DIM | 256, 768 (first corresponds to Saleforce whilst second corresponds to codebert)  |
+| EMBED_ON_LOAD | True/False (setting to True embeds the entities inside the `init-db` click command) |
+| _JSONL_LOCAL_FILE | The path to the `.jsonl` file that contains the entities to be searched and annotated |
+| SEMANTIC | True/False Setting to use the chosen `AI_MODEL` retriever or the sparse `bm25` retriever respectively.
+
+
+Notes:
+
+(i) This will log a warning if the AI_MODEL and the embeddings in the db do not correspond 
+because of dimension size differences.
+We recommend the models be the same for indexing and for query embeddings.
+
+(ii) If a model besides the codeBERT model is used then the correct setting to use is `EMBED_ON_LOAD=True`.
+Here we assume you're using one of the projects in the git-lfs portion of the repo.
+Setting this config to `True` typically slows the time to initialize the database.
+If you've Indexed your own `.jsonl` files with an `'embeddings'` key-value pair for each entry
+then keep this set to `False` to use your own embeddings.
+
+(iii) The value of `VEC_DIM` is used to set the length of the vector store in the database.
+If you use a value that does not correspond to the length generated (`EMBED_ON_LOAD=True`)
+or previously calculated in the (`.jsonl` file) an error will be raised while executing the
+`init-db` click command indicating the size of the differences. The setup assumes all vectors
+are the same length when stored.
+
 ## initialize the db
 
 Update paths in vec_search/config.py file for DATABASE and for _SQLITE_VEC_DLL_PATH variables with your local paths.
