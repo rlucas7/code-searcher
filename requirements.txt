@@ -22,3 +22,7 @@ openai
 google-generativeai # NOTE: this one may be unnecessary, not sure though
 google-cloud-aiplatform
 huggingface_hub
+
+
+# additional retriever baselines
+bm25s>=0.2.10

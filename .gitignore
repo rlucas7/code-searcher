@@ -33,3 +33,5 @@ envvars.sh
 *.csv
 *.csv
 *.txt
+
+bedrock_batch_output*

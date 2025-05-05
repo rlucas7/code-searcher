@@ -1,6 +1,5 @@
 import sys
 
-import sqlite_vec
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 from torch import tensor, reshape, FloatTensor
 from werkzeug.exceptions import abort
@@ -12,9 +11,10 @@ from markupsafe import Markup
 
 from vec_search.auth import login_required
 from vec_search.db import get_db
-
+from vec_search.retriever import Retriever
 # HACK: for now hard codes the location of the config file for AI MODEL
 from vec_search.config import AI_MODEL as MODEL
+from vec_search.config import SEMANTIC, _JSONL_LOCAL_FILE, N, DEVICE
 
 bp = Blueprint("search", __name__)
 
@@ -25,11 +25,19 @@ if str(sys.argv[3]) == "run":
     # in this case-and only this case for now-we import the HF LLM
     # the basic purpose here is to not do a reload for every invocation
     # of a cli cmd
-    from transformers import RobertaTokenizer, RobertaForMaskedLM
-    from vec_search.config import AI_MODEL as MODEL
-    _MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
-    _TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
+    if MODEL == "microsoft/codebert-base-mlm":
+        from transformers import RobertaTokenizer, RobertaForMaskedLM
+        _MODEL = RobertaForMaskedLM.from_pretrained(MODEL)
+        _TOKENIZER = RobertaTokenizer.from_pretrained(MODEL)
+    elif MODEL == "Salesforce/codet5p-110m-embedding":
+        from transformers import AutoModel, AutoTokenizer
+        _MODEL = AutoModel.from_pretrained(MODEL, trust_remote_code=True).to(DEVICE)
+        _TOKENIZER = AutoTokenizer.from_pretrained(MODEL, trust_remote_code=True)
 
+
+# bm25 SUPPORT inside the retriever, also instantiate here so the indexing doesn't occur
+# on every request for bm25. We attach the db inside...
+retriever = Retriever(semantic=SEMANTIC, filepath=None if SEMANTIC else _JSONL_LOCAL_FILE)
 
 # we hack the GET & disambiguate a search
 @bp.route("/", methods=["GET"])
@@ -38,60 +46,12 @@ def index():
     if request.method == "GET" and request.args.get("q") is None:
         # TODO: setup pagination
         posts = db.execute(
-            "SELECT func_name, path, sha, code, doc FROM post limit 10"
+            f"SELECT func_name, path, sha, code, doc FROM post limit {N}"
         ).fetchall()
         return render_template("search/index.html", posts=posts)
     elif request.method == "GET" and request.args.get("q") is not None:
-        # load the LLM to embed the natural lang text to a vec
-        q = request.args.get("q")
-        if g.user is not None:
-            # if user is logged in then record the query to query table
-            SAVE_QUERY_CMD = "INSERT INTO queries(query, user_id) values (?, ?)"
-            db.execute(SAVE_QUERY_CMD, [q, g.user["id"]])
-            db.commit()
-        # block of code to embed natural language query
-        tokens = (
-            [_TOKENIZER.cls_token] + _TOKENIZER.tokenize(q) + [_TOKENIZER.eos_token]
-        )
-        raw_token_ids = tensor(_TOKENIZER.convert_tokens_to_ids(tokens))
-        tokens_ids = reshape(raw_token_ids, (1, len(raw_token_ids)))
-        context_embeddings = _MODEL(tokens_ids, output_hidden_states=True)
-        embeds = context_embeddings.hidden_states[-1].detach().numpy()[0, 0, :]
-        embed = embeds.tolist()
-        # find matches
-        cur = db.cursor()
-        vec_query = """
-            with knn_matches as (
-              select
-                rowid,
-                distance
-              from vec_items
-              where embedding match ?
-                and k = 10
-            )
-            select
-              func_name,
-              path,
-              sha,
-              code,
-              doc,
-              knn_matches.distance as distance,
-              post.id as postid
-            from knn_matches
-            left join post on post.id = knn_matches.rowid
-        """
-        # grab the query id to keep the ids client unique
-        for row in db.execute("SELECT last_insert_rowid()").fetchall():
-            query_id = row["last_insert_rowid()"]
-        cur.execute(vec_query, [sqlite_vec.serialize_float32(embed)])
-        posts = cur.fetchall()
-        for i in range(len(posts)):
-            posts[i].update({"search-query": q})
-            if g.user and q:
-                posts[i].update(
-                    {"query-id": str(query_id) + f"+post-num-{i}", "rank": str(i)}
-                )
-        cur.close()
+        retriever._attach_db(db=db)
+        posts = retriever.retrieve(user = g.user, query=request.args.get("q"))
         return render_template("search/index.html", posts=posts)
     else:
         raise ValueError("should not ever enter this branch")
