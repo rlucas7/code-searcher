@@ -66,7 +66,7 @@ The primary config items that impact the workflows are:
 | VEC_DIM | 256, 768 (first corresponds to Saleforce whilst second corresponds to codebert)  |
 | EMBED_ON_LOAD | True/False (setting to True embeds the entities inside the `init-db` click command) |
 | _JSONL_LOCAL_FILE | The path to the `.jsonl` file that contains the entities to be searched and annotated |
-| SEMANTIC | True/False Setting to use the chosen `AI_MODEL` retriever or the sparse `bm25` retriever respectively.
+| SEMANTIC | True/False Setting to use the chosen `AI_MODEL` retriever or the sparse `bm25` retriever respectively |
 
 
 Notes:

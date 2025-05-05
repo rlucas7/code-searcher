@@ -18,9 +18,8 @@ from vec_search.config import N, DEVICE
 from flask import current_app as app
 
 class Retriever:
-    def __init__(self, semantic:bool, db:Any, filepath: Optional[str]=None):
+    def __init__(self, semantic:bool, filepath: Optional[str]=None):
         self.is_semantic = semantic
-        self.db = db
         if self.is_semantic:
             if MODEL == "Salesforce/codet5p-110m-embedding":
                 self._MODEL = AutoModel.from_pretrained(MODEL, trust_remote_code=True).to(DEVICE)
@@ -39,7 +38,7 @@ class Retriever:
         if self.is_semantic:
             raise ValueError(f"setting a sparse retriever on a semantic model!")
         else:
-            app.logger.info(f"found is_semantic = {self.is_semantic}, initializing bm25 index and retriever...")
+            #app.logger.info(f"found is_semantic = {self.is_semantic}, initializing bm25 index and retriever...")
             with open(filepath, 'r') as jsonl_file:
                 result = [json.loads(jline) for jline in jsonl_file.readlines()]
             # following example from
@@ -53,6 +52,10 @@ class Retriever:
             corpus_tokens = bm25s.tokenize(corpus_text, stopwords="en")
             self.retriever = bm25s.BM25(corpus=corpus)
             self.retriever.index(corpus_tokens)
+
+    def _attach_db(self, db: Any) -> None:
+        """attaches the db to the retriever"""
+        self.db = db
 
     def retrieve(self, user: Any, query:str) -> list[dict[str, Any]]:
         """Retrieve specified number of results based on query and retriever type.

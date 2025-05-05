@@ -35,6 +35,10 @@ if str(sys.argv[3]) == "run":
         _TOKENIZER = AutoTokenizer.from_pretrained(MODEL, trust_remote_code=True)
 
 
+# bm25 SUPPORT inside the retriever, also instantiate here so the indexing doesn't occur
+# on every request for bm25. We attach the db inside...
+retriever = Retriever(semantic=SEMANTIC, filepath=None if SEMANTIC else _JSONL_LOCAL_FILE)
+
 # we hack the GET & disambiguate a search
 @bp.route("/", methods=["GET"])
 def index():
@@ -46,8 +50,7 @@ def index():
         ).fetchall()
         return render_template("search/index.html", posts=posts)
     elif request.method == "GET" and request.args.get("q") is not None:
-        # ADDING bm25 SUPPORT HERE
-        retriever = Retriever(semantic=SEMANTIC, db=db, filepath=None if SEMANTIC else _JSONL_LOCAL_FILE)
+        retriever._attach_db(db=db)
         posts = retriever.retrieve(user = g.user, query=request.args.get("q"))
         return render_template("search/index.html", posts=posts)
     else:

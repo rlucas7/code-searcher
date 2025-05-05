@@ -22,8 +22,8 @@ DATABASE = f"{os.getcwd()}/var/vec_search-instance/vec_search.sqlite"
 # these config values are for the model that is used to generate the embeddings
 # for now these need to work with `RobertaTokenizer` and `RobertaForMaskedLM`
 # via hf local cache but this will likely change
-AI_MODEL = "Salesforce/codet5p-110m-embedding" # VEC_DIM 256
-# AI_MODEL = "microsoft/codebert-base-mlm" # VEC_DIM 768
+# AI_MODEL = "Salesforce/codet5p-110m-embedding" # VEC_DIM 256
+AI_MODEL = "microsoft/codebert-base-mlm" # VEC_DIM 768
 
 DEVICE = "cpu"
 # the size of the vector embeddings-previously this was a literal in the schema.sql file
@@ -31,8 +31,8 @@ DEVICE = "cpu"
 # it so that you can configured the embeddings for different models. In other words, you
 # will want to set the value for `VEC_DIM` to the dimension of the vectors that are
 # returned by `AI_MODEL` chosen above
-VEC_DIM = 256 # for "Salesforce/codet5p-110m-embedding"
-#VEC_DIM = 768 # for "microsoft/codebert-base-mlm"
+# VEC_DIM = 256 # for "Salesforce/codet5p-110m-embedding"
+VEC_DIM = 768 # for "microsoft/codebert-base-mlm"
 
 # The initial workflow embedded the codebert-base-mlm model into the JSON.
 # If you have embeddings already in the JSONL file then keep this false.
@@ -40,7 +40,7 @@ VEC_DIM = 256 # for "Salesforce/codet5p-110m-embedding"
 # used in the jsonl file but used for the retriever, then setting this to
 # true will cause the system to feed the code functions through the `AI_MODEL`
 # it's handy for experimentations
-EMBED_ON_LOAD = True
+EMBED_ON_LOAD = False
 
 # this file contains the indexed contents of the code repo you have indexed
 # I do this via some custom forked code that is in a private repo
@@ -72,7 +72,7 @@ _SQLITE_VEC_DLL_PATH = (
 )
 
 # this config toggles the semantic retriever (true) vs a sparse retriever (false).
-# Currently, codebert is the supported retriever.
+# Codet5+ and CodeBERT are tested retrievers which have been tested end-2-end.
 SEMANTIC = True
 
 # this value reflects the number of results on the page
