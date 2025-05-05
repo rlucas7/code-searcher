@@ -72,6 +72,8 @@ class Retriever:
             self.db.commit()
             for row in self.db.execute("SELECT last_insert_rowid()").fetchall():
                 query_id = row["last_insert_rowid()"]
+        else:
+            query_id = "<none>"
         if self.is_semantic:
             if MODEL == "microsoft/codebert-base-mlm":
                 app.logger.info(f"Running semantic search using codebert on query...")
