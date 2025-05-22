@@ -1,0 +1,31 @@
+"""Given a query and a passage, you must provide a score on an\n
+integer scale of 0 to 1 with the following meanings:\n
+0 = represent that the passage has nothing to do with the query,\n
+0 = represents that the passage seems related to the query but\n
+does not answer it,\n
+1 = represents that the passage has some answer for the query,\n
+but the answer may be a bit unclear, or hidden amongst extraneous\n
+information and\n
+1 = represents that the passage is dedicated to the query and\n
+contains the exact answer.\n
+Important Instruction: Assign category 0 if the passage is\n
+somewhat related to the topic but not completely, category 1 if\n
+passage presents something very important related to the entire\n
+topic but also has some extra information and category 1 if the\n
+passage only and entirely refers to the topic. If none of the\n
+above satisfies give it category 0.\n
+Query: $query\n
+Passage: $passage\n
+Split this problem into steps:\n
+Consider the underlying intent of the search.\n
+Measure how well the content matches a likely intent of the query\n
+(M).\n
+Measure how trustworthy the passage is (T).\n
+Consider the aspects above and the relative importance of each,\n
+and decide on a final score (O). Final score must be an integer\n
+value only.\n
+Do not provide any code in result. Provide each score in the\n
+format of:\n
+\n
+##final score: score without providing any reasoning.\n
+"""
