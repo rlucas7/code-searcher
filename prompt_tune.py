@@ -5,7 +5,9 @@ NOTE: The tuning takes several hours to execute a single epoch on
 the dev data (604 relevance records).
 
 Be sure to set the openAI api key env var before executing this
-cli script.
+cli script. E.g. run
+`export OPENAI_API_KEY="<your-api-key>"`
+before running.
 """
 
 import logging
@@ -19,6 +21,9 @@ import textgrad as tg
 
 from requests import get as RequestsGet
 
+assert os.environ["OPENAI_API_KEY"], f"set your open ai key via: export `OPENAI_API_KEY=\"<your-api-key>\"` and rerun the cli script."
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
 # logger to stdout (console) and to file
@@ -27,7 +32,7 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
 file_handler = logging.FileHandler("prompt_tuning.log")
 file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(logging.Formatter('%(asctime)s::%(levelname)s::%(name)s::%(funcName)s::%(lineno)d::(message)s'))
+file_handler.setFormatter(logging.Formatter('%(asctime)s: %(levelname)s: %(message)s'))
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
@@ -51,6 +56,7 @@ parser.add_argument("--train_data_url", type=str, help="The url to access the tr
 parser.add_argument("--hold_out_data_url", type=str, help="The url to access the hold out data in json form.", default=hold_out_data_url)
 parser.add_argument("--llm_engine_name", type=str, help="The name of the llm engine used by textgrad for prompt tuning.", default="gpt-4o-mini")
 parser.add_argument("--batch_size", type=int, help="The size of each batch for the prompt tuning.", default=4)
+parser.add_argument("--prompt_output_file", type=str, help="The filename for the output file which will contain the optimized prompt.", default="optimized_prompt.txt")
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -66,6 +72,7 @@ if __name__ == "__main__":
     assert dev_resp.status_code==200, f"Got an error code from Github: {train_resp.status_code}, maybe .. try again?"
     dev_contents = loads(dev_resp.content)
     N_dev = len(dev_contents)
+    logger.info(f"downloaded dev and train data for prompt tuning with lengths: {N_dev} and {N_train} respectively")
     ## NOTE(for the reader): dev_contents[i]["doc"] is the query (it's a confusing name)
     ## and dev_contents[i]["code"] is the python function
     ## and dev_contents[i]["label"] is the 0/1 relevance label,
@@ -95,10 +102,39 @@ if __name__ == "__main__":
     formatted_llm_call = tg.autograd.FormattedLLMCall(engine=tg.get_engine(engine_name=args.llm_engine_name), format_string=fmt_string, fields = fields, system_prompt=loss_system_prompt)
 
 
-    ### TODO: modify this starting prompt to take the prompt from the project, link is here
     ### https://github.com/rlucas7/code-searcher/blob/08ba27f859c0450117e78e74edb2192454ca23fb/vec_search/llm_rel_gen.py#L275
+    sys_prompt_text = """Given a query and a passage, you must provide a score on an
+integer scale of 0 to 1 with the following meanings:
+0 = represent that the passage has nothing to do with the query,
+0 = represents that the passage seems related to the query but
+does not answer it,
+1 = represents that the passage has some answer for the query,
+but the answer may be a bit unclear, or hidden amongst extraneous
+information and
+1 = represents that the passage is dedicated to the query and
+contains the exact answer.
+Important Instruction: Assign category 0 if the passage is
+somewhat related to the topic but not completely, category 1 if
+passage presents something very important related to the entire
+topic but also has some extra information and category 1 if the
+passage only and entirely refers to the topic. If none of the
+above satisfies give it category 0.
+Query: $query
+Passage: $passage
+Split this problem into steps:
+Consider the underlying intent of the search.
+Measure how well the content matches a likely intent of the query
+(M).
+Measure how trustworthy the passage is (T).
+Consider the aspects above and the relative importance of each,
+and decide on a final score (O). Final score must be an integer
+value only.
+Do not provide any code in result. Provide each score in the
+format of:
 
-    system_prompt = tg.Variable("You are a code Search results analyst. I will give you a query and a search result with a [0, 1] for whether the result is relevant for the query, 0 indicates an irrelevant result while 1 indicates a relevant result. Your output should exactly match the given values. No extra explanation, just the relevance category.", requires_grad=True, role_description="system prompt to the language model")
+##final score: score without providing any reasoning.
+"""
+    system_prompt = tg.Variable(sys_prompt_text, requires_grad=True, role_description="system prompt to the language model")
     llm = tg.get_engine(engine_name=args.llm_engine_name)
     model = tg.BlackboxLLM(llm, system_prompt=system_prompt)
     optimizer = tg.TextualGradientDescent(engine=llm, parameters=[system_prompt])
@@ -135,67 +171,12 @@ if __name__ == "__main__":
             ttl_loss = tg.sum(losses)
             ttl_loss.backward()
             optimizer.step()
-            logger.info("len(system_prompt.value):", len(system_prompt.value))
+            logger.info(f"length of system_prompt: {len(system_prompt.value)}")
+            if i % (3 * args.batch_size) == 0:
+                logger.info(f"iteration i = {i} has system_prompt:\n {system_prompt.value}")
 
-    # now evaluate on the dev data
-    up_prompt_relevances = []
-    og_prompt_relevances = []
-    og_system_prompt = tg.Variable("You are a code Search results analyst. I will give you a query and a search result with a [0, 1] for whether the result is relevant for the query, 0 indicates an irrelevant result while 1 indicates a relevant result. Your output should exactly match the given values. No extra explanation, just the relevance category.", requires_grad=False, role_description="original system prompt to the language model")
-    og_llm = tg.get_engine(engine_name=args.llm_engine_name)
-    og_model = tg.BlackboxLLM(og_llm, system_prompt=og_system_prompt)
-
-    dev_loader = zip([dev_contents[idx]["doc"] + " & " + dev_contents[idx]["code"] for idx in range(N_dev)], [dev_contents[idx]["label"] for idx in range(N_dev)])
-    for i in range(N_dev):
-        logger.info(f"evaluating {i}th record with original and optimized prompts")
-        query_n_result_x, relevance_z = next(train_loader)
-        x = tg.Variable(query_n_result_x, requires_grad=False, role_description="code search query & result")
-        z = tg.Variable(relevance_z, requires_grad=False, role_description="ground truth relevance determination of the result for the query")
-        resps = model(x)
-        og_resps = og_model(x)
-        up_prompt_relevances.append(resps.value)
-        og_prompt_relevances.append(og_resps.value)
-
-    assert len(up_prompt_relevances) == len(og_prompt_relevances), f"Error two output relevance lists are not equal length"
-
-
-    ### Ok if that indeed 'optimized' the system prompt in some sense, then we expect
-    ### to see an improvement in metrics on a hold out set of relevances w.r.t. the
-    ### optimized prompt relative to the base prompt.
-
-
-
-    ### Compare the relevance determinated based on the two prompts, default and optimized
-    ### against the actual relevances. Which of the two prompts results in better metrics?
-
-    actual_relevances = [str(dev_contents[idx]["label"]) for idx in range(N_dev)]
-    # NOTE: In testing the optimized prompt seems maintina the 0/1 relevance at the beginning
-    # of the prompt. If that changes during the optimization step this part will break.
-    up_relevances = [up_prompt_relevances[idx][0:1] for idx in range(N_dev)]
-
-
-    # first compare actuals with originals
-
-    actual_vs_naive = 0
-    actual_vs_naive_pos = 0
-    for actual, naive in zip(actual_relevances, og_prompt_relevances):
-        val = 1 if actual == naive else 0
-        val_pos = 1 if actual == naive and actual == '1' else 0
-        actual_vs_naive += val
-        actual_vs_naive_pos += val_pos
-
-    actual_vs_opt = 0
-    actual_vs_opt_pos = 0
-    for actual, opt in zip(actual_relevances, up_relevances):
-        val = 1 if actual == opt else 0
-        val_pos = 1 if actual == opt and actual == '1' else 0
-        actual_vs_opt += val
-        actual_vs_opt_pos += val_pos
-
-
-    logger.info(f"""accuracy of naive prompt: {actual_vs_naive/N_dev} \n
-    accuracy of optimized prompt: {actual_vs_opt/N_dev} \n
-    accuracy of naive prompt negative proportion: {(actual_vs_naive - actual_vs_naive_pos)/N_dev} \n
-    accuracy of optimized prompt negative proportion: {(actual_vs_opt - actual_vs_opt_pos)/N_dev} \n
-    accuracy of naive prompt positive proportion: {actual_vs_naive_pos/N_dev} \n
-    accuracy of optimized prompt positive proportion: {actual_vs_opt_pos/N_dev} \n
-    """)
+    # now write the optimized prompt the filesystem for reuse in evaluations
+    with open(args.prompt_output_file, "w") as fh:
+        fh.writelines(system_prompt.value)
+    logger.info(f"optimized prompt written to output file: {args.prompt_output_file} successfully")
+    logger.info("program complete-all done")
