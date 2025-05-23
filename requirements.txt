@@ -26,3 +26,7 @@ huggingface_hub
 
 # additional retriever baselines
 bm25s>=0.2.10
+
+
+# for the prompt tuning cli script only
+textgrad>=0.1.8
