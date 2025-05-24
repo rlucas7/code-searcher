@@ -6,7 +6,7 @@
     subsequent use should work 'as-is' as an input for the `gen-llm-rels` click command.
     Then once those relevances are determined we can use them for metrics calculation in the
     `gen-ir-metrics` click command. Therefore, we use this module only once in the workflow for
-    comparing the results.
+    comparing the results. The paper that describes the cosQA data is here: https://arxiv.org/abs/2105.13239
 """
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
