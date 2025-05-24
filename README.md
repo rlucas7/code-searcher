@@ -94,10 +94,10 @@ To run each retriever you need a specific configuration, these specifications ar
 
 CodeBert: `AI_MODEL="microsoft/codebert-base-mlm"`, `VEC_DIM=768`, `EMBED_ON_LOAD=False`, `SEMANTIC=True`
 CodeT5+: `AI_MODEL="Salesforce/codet5p-110m-embedding"`, `VEC_DIM=256`, `EMBED_ON_LOAD=True`, `SEMANTIC=True`
-BM25: `AI_MODEL="microsoft/codebert-base-mlm"`, `VEC_DIM=768`, `EMBED_ON_LOAD=False`, `SEMANTIC=False`
+BM25: `EMBED_ON_LOAD=False`, `SEMANTIC=False`
 
 These configurations are used regardless of which indexed `*.jsonl` file you choose.
-Notice in the BM25 case the settings are the same as for CodeBERT except `SEMANTIC=False`.
+Notice in the BM25 case the settings are the same as for CodeBERT except `SEMANTIC=False`, the BM25 is a sparse retriever.
 This is because for the BM25 retriever we do not use a dense vector embedding model and instead use a sparse, non-semantic model.
 Also, notice the `EMBED_ON_LOAD=True` only for the CodeT5+ model.
 This is because we need to generate the dense vector embeddings when we read in the `*.jsonl` files when we run the `init-db` click command.
@@ -108,6 +108,7 @@ If you inspect the logs, for some languages with codet5+ you'll see a few functi
 Watching the logs in the terminal is helpful to confirm the configuration is set as you want it to be.
 For example when you execute a query, a log file entry is emitted indicating that codet5+ model is used if that model is configured correctly, similar for the bm25 retriever too.
 
+
 ## initialize the db
 
 Update paths in vec_search/config.py file for DATABASE and for _SQLITE_VEC_DLL_PATH variables with your local paths.
@@ -117,6 +118,8 @@ flask --app vec_search init-db
 ```
 Note that the above command populates the sqlite db with the vectors
 from the given file (currently, the Collections-java.jsonl file is used as example, as noted in vec_search/config.py).
+If you switch retrievers or programming languages (*.jsonl files) in the config, you must rerun this command to repopulate
+the database.
 
 ## to run the app on localhost
 
