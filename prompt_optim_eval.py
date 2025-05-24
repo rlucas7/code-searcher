@@ -1,4 +1,13 @@
-""" evaluates two prompts on a given dataset """
+""" evaluates two prompts on a given dataset.
+The default is to use:
+https://raw.githubusercontent.com/rlucas7/code-searcher/refs/heads/main/cosqa-train-1.json
+which is the first 20% of the cosQA data from:
+https://raw.githubusercontent.com/Jun-jie-Huang/CoCLR/refs/heads/main/data/qa/cosqa-train.json
+if you want to run this on a subsequent portion invoke with:
+
+python prompt_optim_eval.py --eval_data_url https://raw.githubusercontent.com/rlucas7/code-searcher/refs/heads/main/cosqa-train-2.json
+for the second 20%, changing the integer just prior to the .json extension is all that is needed.
+"""
 
 import logging
 import os
@@ -23,7 +32,7 @@ parser = ArgumentParser(
     "Small modifications to the script would be needed to use different datasets."
     )
 
-hold_out_data_url = "https://raw.githubusercontent.com/Jun-jie-Huang/CoCLR/refs/heads/main/data/qa/cosqa-train.json"
+hold_out_data_url = "https://raw.githubusercontent.com/rlucas7/code-searcher/refs/heads/main/cosqa-train-1.json"
 parser.add_argument("--eval_data_url", type=str, help="The url to access the hold out data in json form.", default=hold_out_data_url)
 parser.add_argument("--llm_engine_name", type=str, help="The name of the llm engine used by textgrad for prompt tuning.", default="gpt-4o-mini")
 parser.add_argument("--prompt_input_files", nargs=2, type=str, help="The filenames which will contain two prompts to be compared. " \
@@ -54,6 +63,7 @@ if __name__ == "__main__":
         logger = logging.getLogger(__name__)
 
     # load eval data
+    logging.info(f"Getting data from {args.eval_data_url}")
     dev_resp = RequestsGet(args.eval_data_url)
     assert dev_resp.status_code==200, f"Got an error code from Github: {dev_resp.status_code}, maybe .. try again?"
     eval_contents = loads(dev_resp.content)
@@ -101,19 +111,18 @@ if __name__ == "__main__":
 
     ### Compare the relevance determinated based on the two prompts, default and optimized
     ### against the actual relevances. Which of the two prompts results in better metrics?
-
     actual_relevances = [str(eval_contents[idx]["label"]) for idx in range(N_dev)]
 
     # NOTE: In testing the optimized prompt seems maintian the 0/1 relevance at the end, 'Final Score: 0/1' is what I see.
     # of the prompt. If that changes during the optimization step this part will break.
     # TODO: investigate structured output call here to mitigate
     up_relevances = [up_prompt_relevances[idx][-1] for idx in range(N_dev)]
-
+    ogp_relevances = [og_prompt_relevances[idx][-1:] for idx in range(N_dev)]
     # first compare actuals with originals
 
     actual_vs_naive = 0
     actual_vs_naive_pos = 0
-    for i, (actual, naive) in enumerate(zip(actual_relevances, og_prompt_relevances), start=1):
+    for i, (actual, naive) in enumerate(zip(actual_relevances, ogp_relevances), start=1):
         val = 1 if actual == naive else 0
         val_pos = 1 if actual == naive and actual == '1' else 0
         actual_vs_naive += val
@@ -128,10 +137,9 @@ if __name__ == "__main__":
         actual_vs_opt_pos += val_pos
 
 
-    logger.info(f"""accuracy of naive prompt: {actual_vs_naive/N_dev} \n
-    accuracy of optimized prompt: {actual_vs_opt/N_dev} \n
-    accuracy of naive prompt negative proportion: {(actual_vs_naive - actual_vs_naive_pos)/N_dev} \n
-    accuracy of optimized prompt negative proportion: {(actual_vs_opt - actual_vs_opt_pos)/N_dev} \n
-    accuracy of naive prompt positive proportion: {actual_vs_naive_pos/N_dev} \n
-    accuracy of optimized prompt positive proportion: {actual_vs_opt_pos/N_dev} \n
-    """)
+    logger.info(f"accuracy of naive prompt: {actual_vs_naive/N_dev}")
+    logger.info(f"accuracy of optimized prompt: {actual_vs_opt/N_dev}")
+    logger.info(f"accuracy of naive prompt negative proportion: {(actual_vs_naive - actual_vs_naive_pos)/N_dev}")
+    logger.info(f"accuracy of optimized prompt negative proportion: {(actual_vs_opt - actual_vs_opt_pos)/N_dev}")
+    logger.info(f"accuracy of naive prompt positive proportion: {actual_vs_naive_pos/N_dev}")
+    logger.info(f"accuracy of optimized prompt positive proportion: {actual_vs_opt_pos/N_dev}")
