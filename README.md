@@ -87,6 +87,27 @@ or previously calculated in the (`.jsonl` file) an error will be raised while ex
 `init-db` click command indicating the size of the differences. The setup assumes all vectors
 are the same length when stored.
 
+### Configuration for each retriever
+
+There are three retrievers currently tested: codet5+, codeBERT, and bm25.
+To run each retriever you need a specific configuration, these specifications are documented in this section.
+
+CodeBert: `AI_MODEL="microsoft/codebert-base-mlm"`, `VEC_DIM=768`, `EMBED_ON_LOAD=False`, `SEMANTIC=True`
+CodeT5+: `AI_MODEL="Salesforce/codet5p-110m-embedding"`, `VEC_DIM=256`, `EMBED_ON_LOAD=True`, `SEMANTIC=True`
+BM25: `AI_MODEL="microsoft/codebert-base-mlm"`, `VEC_DIM=768`, `EMBED_ON_LOAD=False`, `SEMANTIC=False`
+
+These configurations are used regardless of which indexed `*.jsonl` file you choose.
+Notice in the BM25 case the settings are the same as for CodeBERT except `SEMANTIC=False`.
+This is because for the BM25 retriever we do not use a dense vector embedding model and instead use a sparse, non-semantic model.
+Also, notice the `EMBED_ON_LOAD=True` only for the CodeT5+ model.
+This is because we need to generate the dense vector embeddings when we read in the `*.jsonl` files when we run the `init-db` click command.
+The loading for the codet5p model therefore takes a bit longer-a few minutes (~5-10 minutes on my laptop) for the repos here-so maybe grab a coffee while it loads.
+
+If you inspect the logs, for some languages with codet5+ you'll see a few functions get skipped because the tokenized length, using codet5+ tokenizer, is longer than the context length (512). This is expected and is a (very) small proportion of the functions in any given language and not expected to materially impact the findings.
+
+Watching the logs in the terminal is helpful to confirm the configuration is set as you want it to be.
+For example when you execute a query, a log file entry is emitted indicating that codet5+ model is used if that model is configured correctly, similar for the bm25 retriever too.
+
 ## initialize the db
 
 Update paths in vec_search/config.py file for DATABASE and for _SQLITE_VEC_DLL_PATH variables with your local paths.
