@@ -1,4 +1,28 @@
 <!doctype html>
+<style>
+  .animated {
+     background-position: left top;
+     padding-top:95px;
+     margin-bottom:60px;
+     -webkit-animation-duration: 10s;animation-duration: 10s;
+     -webkit-animation-fill-mode: both;animation-fill-mode: both;
+  }
+
+  @-webkit-keyframes fadeOut {
+     0% {opacity: 1;}
+     100% {opacity: 0;}
+  }
+
+  @keyframes fadeOut {
+     0% {opacity: 1;}
+     100% {opacity: 0;}
+  }
+
+  .fadeOut {
+     -webkit-animation-name: fadeOut;
+     animation-name: fadeOut;
+  }
+</style>
 <title>{% block title %}{% endblock %} - VecSearch</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
@@ -10,7 +34,7 @@
       <li><span>{{ g.user['username'] }}</span>
       <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
     {% else %}
-    <span id="login-tt" class="tt" data-bs-placement="bottom" data-toggle="login-tooltip" title="Relevance workflow requires you to log in (register to create a user)">
+    <span id="login-tt" class="tt" data-bs-placement="bottom" data-toggle="login-tooltip" title="Relevance workflow expects you to log in (register to create a user)">
       <span class="login"></span>
       <li><a href="{{ url_for('auth.register') }}">Register</a>
       <li><a href="{{ url_for('auth.login') }}">Log In</a>
@@ -23,7 +47,9 @@
     {% block header %}{% endblock %}
   </header>
   {% for message in get_flashed_messages() %}
-    <div class="flash">{{ message }}</div>
+    <div class="flash animated fadeOut">
+      {{ message }}
+    </div>
   {% endfor %}
   {% block content %}{% endblock %}
 </section>
