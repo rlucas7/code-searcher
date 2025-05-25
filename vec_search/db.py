@@ -137,7 +137,14 @@ def reset_users():
     click.echo(
         "WARNING: the user table has been reset, all user_id associations in the queries table are lost ..."
     )
-
+    db.execute(
+        "INSERT INTO user (username, password) VALUES (?, ?)",
+            (-1, "anonymous"),
+    )
+    db.commit()
+    click.echo(
+        "INFO: the user table has the anonymous user added, all non-authenticated user_id associations in the queries table are associated to this user"
+    )
 
 @click.command("init-db")
 def init_db_command():

@@ -64,16 +64,14 @@ class Retriever:
             user (Any): A user from the global flask object if the user is logged in, or None if not.
             query (str): A string containing the query.
         """
-        if user is not None:
-            app.logger.info(f"A `user` value was included with query, storing in `queries` table...")
-            # if user is logged in then record the query to query table regardless of semantic or not
-            SAVE_QUERY_CMD = "INSERT INTO queries(query, user_id) values (?, ?)"
-            self.db.execute(SAVE_QUERY_CMD, [query, user["id"]])
-            self.db.commit()
-            for row in self.db.execute("SELECT last_insert_rowid()").fetchall():
-                query_id = row["last_insert_rowid()"]
-        else:
-            query_id = "<none>"
+        SAVE_QUERY_CMD = "INSERT INTO queries(query, user_id) values (?, ?)"
+        # if user is logged in then record the query to query table w/user else use anonymous
+        user_id = user['id'] if user is not None else -1
+        app.logger.info(f"A `user` value of {user_id} was included with query, storing in `queries` table...")
+        self.db.execute(SAVE_QUERY_CMD, [query, user_id])
+        self.db.commit()
+        for row in self.db.execute("SELECT last_insert_rowid()").fetchall():
+            query_id = row["last_insert_rowid()"]
         if self.is_semantic:
             if MODEL == "microsoft/codebert-base-mlm":
                 app.logger.info(f"Running semantic search using codebert on query...")
