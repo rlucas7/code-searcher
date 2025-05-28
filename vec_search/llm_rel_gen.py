@@ -23,6 +23,9 @@ from vertexai.batch_prediction import BatchPredictionJob
 from google.cloud import storage
 
 
+GEMINI_MODEL = "gemini-2.0-flash-001"
+
+
 class LLMRelAssessorBase(ABC):
     def __init__(
         self,
@@ -78,7 +81,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
             vertexai.init(project=PROJECT_ID, location=LOCATION)
             # NOTE: (i) model = "gemini-1.0-pro" # does not comport well with prompt
             # (ii) api limits are strict so we need batch which requires gcs store input
-            model = "gemini-1.5-pro-001"
+            model = GEMINI_MODEL
             self.client = BatchPredictionJob
             self.model_name = model
         elif model_name == "aws":
@@ -125,7 +128,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
             )
             # write results to local filesystem
             c_df.to_csv(self.output_filename)
-        elif self.model_name == "gemini-1.5-pro-001":
+        elif self.model_name == GEMINI_MODEL:
             input_bucket_name = "batch-llm-relevance-inputs"
             output_bucket_name = "gemini-completions-batch"
             storage_client = storage.Client()
@@ -141,6 +144,9 @@ class LLMRelAssessor(LLMRelAssessorBase):
                             "contents": [
                                 {"role": "user", "parts": [{"text": content}]}
                             ],
+                            # TODO: add structured outputs here: a la
+                            # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/control-generated-output#googlegenaisdk_ctrlgen_with_resp_schema-python_genai_sdk
+                            # and also cf. https://www.googlecloudcommunity.com/gc/AI-ML/Structured-Output-in-vertexAI-BatchPredictionJob/m-p/865597
                             "generationConfig": {"temperature": 0.4},
                         }
                     }
@@ -196,11 +202,8 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 p_data.append(self.parse_resp(entry["response"]))
             df = DataFrame(p_data)
             c_df = concat([df, self.df], axis=1)
-            c_df["llm_rel_score"] = (
-                df["message"]
-                .str.split(":")
-                .apply(lambda x: max(0, min(int(x[1].strip()), 1)))
-            )
+            # NOTE: once structured outputs are added to the code, this lambda will likely need to change
+            c_df["llm_rel_score"] = df["message"].str.split(":").apply(lambda x: max(0, min(int(x[-1].strip("\n")), 1)))
             c_df.to_csv(self.output_filename)
         elif self.model_name == "us.amazon.nova-lite-v1:0":
             from .bedrock_batch import bb
@@ -237,14 +240,14 @@ class LLMRelAssessor(LLMRelAssessorBase):
             stuff["finish-reason"] = choice["finish_reason"]
             # ...
             llm_client = "openai"
-        elif self.model_name == "gemini-1.5-pro-001":
+        elif self.model_name == GEMINI_MODEL:
             # with gemini batch replies-we've already converted to dict
             # NOTE: batch keynames are camelcased whereas non-batch are snake-arg!
             rd = resp
             if len(rd["candidates"]) > 1:
                 app.logger.info("multiple candidates in response, taking the first...")
             choice = rd["candidates"][0]["content"]
-            stuff["msg-id"] = None
+            stuff["msg-id"] = rd.get("responseId", None)
             stuff["model-id"] = rd.get("modelVersion", self.model_name)
             stuff["usage"] = rd.get("usageMetadata", "")
             for k, v in choice["parts"][0].items():
