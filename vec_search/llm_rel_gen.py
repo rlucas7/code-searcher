@@ -24,7 +24,8 @@ from google.cloud import storage
 
 
 GEMINI_MODEL = "gemini-2.0-flash-001"
-
+# NOTE: it's not yet clear to me if this format can be used across providers...
+GEMINI_RESPONSE_SCHEMA = {"type": "STRING", "enum": ["not-relevant", "relevant"]}
 
 class LLMRelAssessorBase(ABC):
     def __init__(
@@ -64,10 +65,6 @@ class LLMRelAssessor(LLMRelAssessorBase):
             prompt=prompt,
             model_name=model_name,
         )
-        # TODO: consider using `dotenv` package as part of app config overal refactor
-        # if not os.environ["OPEN_AI_API_KEY"]:
-        #    raise ValueError("error the OPEN_AI_API_KEY environment variable is not set")
-        # self.qrel = qrel # TODO: figure out why this is necessary in trec & umbrela codes ...
         self._create_client(model_name=model_name)
 
     def _create_client(self, model_name: str) -> None:
@@ -79,8 +76,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
             PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
             LOCATION = os.environ.get("GCP_LOCATION", "us-central1")
             vertexai.init(project=PROJECT_ID, location=LOCATION)
-            # NOTE: (i) model = "gemini-1.0-pro" # does not comport well with prompt
-            # (ii) api limits are strict so we need batch which requires gcs store input
+            # API limits are strict so we need batch which requires gcs store input
             model = GEMINI_MODEL
             self.client = BatchPredictionJob
             self.model_name = model
@@ -147,7 +143,10 @@ class LLMRelAssessor(LLMRelAssessorBase):
                             # TODO: add structured outputs here: a la
                             # https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/control-generated-output#googlegenaisdk_ctrlgen_with_resp_schema-python_genai_sdk
                             # and also cf. https://www.googlecloudcommunity.com/gc/AI-ML/Structured-Output-in-vertexAI-BatchPredictionJob/m-p/865597
-                            "generationConfig": {"temperature": 0.4},
+                            "generationConfig": {"temperature": 0.4,
+                                                 "response_mime_type": "text/x.enum",
+                                                 "response_schema": GEMINI_RESPONSE_SCHEMA
+                                                 }
                         }
                     }
                     # request as a string and write to tempfile.
@@ -202,8 +201,8 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 p_data.append(self.parse_resp(entry["response"]))
             df = DataFrame(p_data)
             c_df = concat([df, self.df], axis=1)
-            # NOTE: once structured outputs are added to the code, this lambda will likely need to change
-            c_df["llm_rel_score"] = df["message"].str.split(":").apply(lambda x: max(0, min(int(x[-1].strip("\n")), 1)))
+            # NOTE: I spot checked the structured outputs for gemini, they seem to all be correct, only the two options...
+            c_df["llm_rel_score"] = df["message"].apply(lambda x: 1 if x.lower().strip() == "relevant" else 0)
             c_df.to_csv(self.output_filename)
         elif self.model_name == "us.amazon.nova-lite-v1:0":
             from .bedrock_batch import bb
