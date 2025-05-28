@@ -260,6 +260,7 @@ INNER JOIN (
 GROUP BY
 q.query_id,
 user_id,
+
 post_id
 ;
 

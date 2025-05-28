@@ -51,6 +51,8 @@ def index():
         return render_template("search/index.html", posts=posts)
     elif request.method == "GET" and request.args.get("q") is not None:
         retriever._attach_db(db=db)
+        if g.user is None:
+            flash("Your queries will not be saved with your relevance annotations until you authenticate.")
         posts = retriever.retrieve(user = g.user, query=request.args.get("q"))
         return render_template("search/index.html", posts=posts)
     else:
