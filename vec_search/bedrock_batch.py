@@ -215,7 +215,7 @@ def bb(df, prompt, output_filename):
     )
     app.logger.info(response)
     jobArn = response.get('jobArn')
-    poll_cnt, max_poll_cnt = 1, 20
+    poll_cnt, max_poll_cnt = 1, 60
 
     while poll_cnt < max_poll_cnt:
         sleep(30)
