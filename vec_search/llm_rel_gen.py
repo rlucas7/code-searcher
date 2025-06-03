@@ -21,11 +21,15 @@ import vertexai
 from openai import OpenAI
 from vertexai.batch_prediction import BatchPredictionJob
 from google.cloud import storage
+from llama_api_client import LlamaAPIClient
 
-
+# Googley stuff
 GEMINI_MODEL = "gemini-2.0-flash-001"
 # NOTE: it's not yet clear to me if this format can be used across providers...
 GEMINI_RESPONSE_SCHEMA = {"type": "STRING", "enum": ["not-relevant", "relevant"]}
+
+# meta
+HERD = {"mav": "Llama-4-Maverick-17B-128E-Instruct-FP8", "scout": "Llama-4-Scout-17B-16E-Instruct-FP8"}
 
 class LLMRelAssessorBase(ABC):
     def __init__(
@@ -84,6 +88,10 @@ class LLMRelAssessor(LLMRelAssessorBase):
             # NOTE: aws code is in bedrock_batch.py
             self.model_name = "us.amazon.nova-lite-v1:0"
             self.client = None
+        elif model_name == "llama4":
+            # TODO: fixup  calls, for now use mav
+            self.model_name = "llama4-mav"
+            self.client = LlamaAPIClient()
         else:
             raise ValueError(f"model {self.model_name} is not currently supported ...")
 
@@ -98,7 +106,6 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 query = row['query']
                 passage = row['doc'] + "\n\n\n" + row['code']
                 tp = {'query': query, 'passage': passage}
-
                 content = self.prompt.safe_substitute(tp)
                 response = self.client.chat.completions.create(
                     messages=[
@@ -169,7 +176,6 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 f"Model resource name with the job: {batch_prediction_job.model_name}"
             )
             app.logger.info(f"Job state: {batch_prediction_job.state.name}")
-
             # Refresh the job until complete
             while not batch_prediction_job.has_ended:
                 sleep(30)
@@ -208,6 +214,51 @@ class LLMRelAssessor(LLMRelAssessorBase):
             from .bedrock_batch import bb
             app.logger.info("aws bedrock batch workflow starting ...")
             bb(df=self.df, prompt=self.prompt, output_filename=self.output_filename)
+        elif isinstance(self.client, LlamaAPIClient):
+            llm_gen_data = defaultdict(list)
+            for index, row in self.df.iterrows():
+                # TODO: figure out generic batch
+                # or at least refactor this out and use it in both here and openai
+                # e.g. fix the slop here
+                app.logger.debug(f"processing index: {index} ...")
+                # access of all entries follows via column name as key
+                query = row['query']
+                passage = row['doc'] + "\n\n\n" + row['code']
+                tp = {'query': query, 'passage': passage}
+                content = self.prompt.safe_substitute(tp)
+                response = self.client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": content,
+                        }
+                    ],
+                    model=HERD["mav"],
+                    temperature=0.4,
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {
+                            "schema": {
+                                "properties": {
+                                    "relevance": {
+                                        "type": "string",
+                                        "enum": ["relevant", "not-relevant"]
+                                    }
+                                },
+                                "required": ["relevance"],
+                                "type": "object"
+                            }
+                        }
+                    }
+                )
+                # NOTE: we ignore the `parse` flag
+                resp = json.loads(response.completion_message.content.text)
+                llm_gen_data["relevances"].append(resp["relevance"])
+            llm_gen_df = DataFrame(llm_gen_data)
+            c_df = concat([llm_gen_df, self.df], axis=1)
+            c_df["llm_rel_score"] = llm_gen_df["relevances"].apply(lambda x: 1 if x.lower().strip() == "relevant" else 0)
+            # write results to local filesystem
+            c_df.to_csv(self.output_filename)
         else:
             raise NotImplementedError(
                 f"generate_rel for client: {self.client!r} not implemented..."
