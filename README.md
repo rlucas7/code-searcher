@@ -305,7 +305,7 @@ Currently supported models:
 |llama 4 Maverick| llama4  |
 | nova-lite     | aws      |
 | gemini-2.0    | gemini   |
-| OpenAI o4-mini| openai  |
+| OpenAI o4-mini| openai   |
 
 TODO: Make the scout model also available after testing.
 
