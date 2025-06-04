@@ -238,6 +238,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
                     response_format={
                         "type": "json_schema",
                         "json_schema": {
+                            "name": "Relevance",
                             "schema": {
                                 "properties": {
                                     "relevance": {
