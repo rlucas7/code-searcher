@@ -226,8 +226,8 @@ To collect the data for the annotations:
 flask --app vec_search export-rad-to-csv rad.csv
 ```
 Note that this exports to a file in the current working directory named
-`rad.csv`. If you want a different filename this provide the alternate filename.
-If the file already exists in the working directory then an overwrite will occur.I
+`rad.csv`. If you want a different filename this provides the alternate filename.
+If the file already exists in the working directory then an overwrite will occur.
 
 ## Manual workflow to generate relevance data
 

@@ -241,12 +241,12 @@ class LLMRelAssessor(LLMRelAssessorBase):
                             "name": "Relevance",
                             "schema": {
                                 "properties": {
-                                    "relevance": {
+                                    "message": {
                                         "type": "string",
                                         "enum": ["relevant", "not-relevant"]
                                     }
                                 },
-                                "required": ["relevance"],
+                                "required": ["message"],
                                 "type": "object"
                             }
                         }
@@ -254,10 +254,10 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 )
                 # NOTE: we ignore the `parse` flag
                 resp = json.loads(response.completion_message.content.text)
-                llm_gen_data["relevances"].append(resp["relevance"])
+                llm_gen_data["message"].append(resp["message"])
             llm_gen_df = DataFrame(llm_gen_data)
             c_df = concat([llm_gen_df, self.df], axis=1)
-            c_df["llm_rel_score"] = llm_gen_df["relevances"].apply(lambda x: 1 if x.lower().strip() == "relevant" else 0)
+            c_df["llm_rel_score"] = llm_gen_df["message"].apply(lambda x: 1 if x.lower().strip() == "relevant" else 0)
             # write results to local filesystem
             c_df.to_csv(self.output_filename)
         else:
