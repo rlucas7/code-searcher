@@ -42,11 +42,11 @@ def cohen_kappa(df: DataFrame) -> dict[str, float]:
     # here for some queries if there are no 0-or no 1-then we raise key error and handle
     # TODO: make this cleaner code, but for now it seems to work on test cases...
     try:
-        p_yes = x_tab[1][1] + 1
+        p_yes = x_tab[1][1]
     except KeyError:
         p_yes = 1
     try:
-        p_no = x_tab[0][0] + 1
+        p_no = x_tab[0][0]
     except KeyError:
         p_no = 1
     n_items = x_tab["All"]["All"]
