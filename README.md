@@ -226,8 +226,8 @@ To collect the data for the annotations:
 flask --app vec_search export-rad-to-csv rad.csv
 ```
 Note that this exports to a file in the current working directory named
-`rad.csv`. If you want a different filename this provide the alternate filename.
-If the file already exists in the working directory then an overwrite will occur.I
+`rad.csv`. If you want a different filename this provides the alternate filename.
+If the file already exists in the working directory then an overwrite will occur.
 
 ## Manual workflow to generate relevance data
 
@@ -297,9 +297,19 @@ In general the argments for `gen-llm-rels` command look like:
 flask --app vec_search gen-llm-rels <input-csv> <output-csv> <llm-model-name> <dup-strategy>
 ```
 
-The defaults for the last 2 are `'openai'` and `'takelast'`.
+The default for the `dup-strategy`  is `'takelast'`, `llm-model-name` is required.
+Currently supported models:
 
-Also supported for `llm-model-name` are: `gemini`, and `aws`.
+| Model name   | Model arg |
+|--------------| ----------|
+|llama 4 Maverick| llama4  |
+| nova-lite     | aws      |
+| gemini-2.0    | gemini   |
+| OpenAI o4-mini| openai   |
+
+TODO: Make the scout model also available after testing.
+
+Also supported for `llm-model-name` are: `gemini`, and `aws`, and `llama4` (provided you have an credentialed access to each respective service)
 
 There prompt is in the `llm_rel_gen.py` module, we use the umbrella prompt.
 
