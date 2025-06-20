@@ -109,7 +109,7 @@ def dataframe_to_jsonl(
             row_config = BaseGenerationConfig(**config_dict)
             # Create batch inference record
             # similar logic across: concat docstring and code
-            passage = row['doc'] + "\n\n\n" + row['code']
+            passage = str(row['doc']) + "\n\n\n" + row['code']
             tp = {'query': row['query'], 'passage': passage}
             content = prompt.safe_substitute(tp)
 
