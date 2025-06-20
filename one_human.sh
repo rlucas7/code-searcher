@@ -1,9 +1,9 @@
-initials=lrr;
-for retriever in bm25 codebert; # codet5p
+initials=D;
+for retriever in codebert codet5p bm25; 
 do
-  for lang in c java js go python;
+  for lang in js go python c java;
   do
-    for provider in llama4 aws openai gemini;
+    for provider in openai aws llama4 gemini;
     do
       echo "Generating relevances for: $retriever $lang $provider";
       echo "rad-$lang-lang-$initials-$retriever.csv llm_gen_rel-$provider-$lang-$initials-$provider.csv $provider";

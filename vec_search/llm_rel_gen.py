@@ -104,7 +104,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 app.logger.debug(f"processing index: {index} ...")
                 # access of all entries follows via column name as key
                 query = row['query']
-                passage = row['doc'] + "\n\n\n" + row['code']
+                passage = str(row['doc']) + "\n\n\n" + row['code']
                 tp = {'query': query, 'passage': passage}
                 content = self.prompt.safe_substitute(tp)
                 response = self.client.chat.completions.create(
@@ -139,7 +139,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
             with open("./examples.jsonl", "w") as f:
                 for index, row in self.df.iterrows():
                     query = row['query']
-                    passage = row['doc'] + "\n\n\n" + row['code']
+                    passage = str(row['doc']) + "\n\n\n" + row['code']
                     tp = {'query': query, 'passage': passage}
                     content = self.prompt.safe_substitute(tp)
                     r = {
@@ -223,7 +223,7 @@ class LLMRelAssessor(LLMRelAssessorBase):
                 app.logger.debug(f"processing index: {index} ...")
                 # access of all entries follows via column name as key
                 query = row['query']
-                passage = row['doc'] + "\n\n\n" + row['code']
+                passage = str(row['doc']) + "\n\n\n" + row['code']
                 tp = {'query': query, 'passage': passage}
                 content = self.prompt.safe_substitute(tp)
                 response = self.client.chat.completions.create(
