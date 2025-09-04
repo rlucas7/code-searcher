@@ -1,4 +1,25 @@
-# Prereqs
+# Purpose
+
+This repository houses the code used for the manuscript titled: <under-revise-&-resubmit>
+
+The readme here will be updated once a draft has found a good home.
+
+The repo contains a flash server, intended to be run on localhost and used to annotate relevant vs not relevance queries from
+indexed code repositories which are searched with human language in a traditional search bar.
+
+Relevance annotations are also generated via LLM models, both open source and commercially proprietary models are compared.
+The methods are compared across several popular programming languages (C, Java, Javscript, Go, Python), on repositories
+which share a common theme-implementation of data structures.
+
+Retrieval methods compared include bm25 and vector search methods.
+The vector search methods require sqlite3 using the sqlite-vec sqlite database extension.
+The next section describes the installation of sqlite3 and the database extension, after which 
+the application setup is described.
+
+Comparison across retrieval methods and programming languages allow us to determine whether
+there are affinities between LLM relevance annotators and programming languages as well as retrieval methods. 
+
+# Installation Prereqs
 
 ## vector db extension install for flask app
 
