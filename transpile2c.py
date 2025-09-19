@@ -113,7 +113,7 @@ if __name__ == "__main__":
     ## 70.00% of the issues are py2c.exceptions.SourceCodeException
     ## 12.90% are a generic exception
     ## 08.00% py2c.exceptions.NoneIsNotAllowedException
-    ## 00.90% synatx error
+    ## 00.90% syntax error
     ## 05.90% are invalid annotations
     ## 02.90% attribute error
 
