@@ -30,7 +30,7 @@ if __name__ == "__main__":
     cnts = Counter(stats)
     with jsonlines.open(args.inputfile) as reader:
         for obj in reader:
-             # Each obj is a dictionary representing a repository
+        # Each obj is a dictionary representing a repository
             if obj['func_name']:
                 cnts[stats_names[0]] += 1
                 # counts newline characts just line `wc -l`
