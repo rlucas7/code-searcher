@@ -120,46 +120,35 @@ if __name__ == "__main__":
     ## now looking at the largest source we sample X of these and inspect manually
     src_excs = [(idx, exc) for idx, exc in exceptions_indices if isinstance(exc, SourceCodeException)]
     if args.samples > 0:
+        samp = sample(src_excs, args.samples)
         if args.samples > len(src_excs):
             print(f"Error: --sample ({args.samples}) is greater than the number of available SourceCodeException examples ({len(src_excs)}).")
             sys.exit(1)
         seed(args.seed)
-        samp = sample(src_excs, args.samples)
-        src_code_excs = Counter()
-        for s in samp:
-            if args.verbose:
-                print(s)
-                print(contents[s[0]]['code'])
-            ## some automatic line of code error determinations...
-            line, node_name = s[1].args[0].split("Line:")[-1].split("Name:")
-            line.strip(), node_name.strip()
-            src_code_excs[node_name.strip()] += 1
-            if line.strip().split("/")[0] != "None":
-                line_no = int(line.strip().split("/")[0]) - 1
-                if args.verbose:
-                    print("e.g. ---->", contents[s[0]]['code'].split("\n")[line_no])
-            else:
-                if args.verbose:
-                    print("line no not tracked...")
     elif args.samples < 0:
-        src_code_excs = Counter()
-        for s in src_excs:
-            if args.verbose:
-                print(s)
-                print(contents[s[0]]['code'])
-            ## some automatic line of code error determinations...
-            line, node_name = s[1].args[0].split("Line:")[-1].split("Name:")
-            line.strip(), node_name.strip()
-            src_code_excs[node_name.strip()] += 1
-            if line.strip().split("/")[0] != "None":
-                line_no = int(line.strip().split("/")[0]) - 1
-                if args.verbose:
-                    print("e.g. ---->", contents[s[0]]['code'].split("\n")[line_no])
-            else:
-                if args.verbose:
-                    print("line no not tracked...")
+        samp = src_excs
     else:
+        # here we exit early as we do not want to inspect any exceptions
+        print("No sampling of SourceCodeException examples requested, exiting early...")
         sys.exit(0)
+
+    ## Now we look over the exceptions and categorize them
+    src_code_excs = Counter()
+    for s in samp:
+        if args.verbose:
+            print(s)
+            print(contents[s[0]]['code'])
+        ## some automatic line of code error determinations...
+        line, node_name = s[1].args[0].split("Line:")[-1].split("Name:")
+        src_code_excs[node_name.strip()] += 1
+        if line.strip().split("/")[0] != "None":
+            line_no = int(line.strip().split("/")[0]) - 1
+            if args.verbose:
+                print("e.g. ---->", contents[s[0]]['code'].split("\n")[line_no])
+        else:
+            if args.verbose:
+                print("line no not tracked...")
+
     # now display the results of transpiler errors
     ttl_src_exc = sum(src_code_excs.values())
     # print in descending order
