@@ -120,6 +120,9 @@ if __name__ == "__main__":
     ## now looking at the largest source we sample X of these and inspect manually
     src_excs = [(idx, exc) for idx, exc in exceptions_indices if isinstance(exc, SourceCodeException)]
     if args.samples > 0:
+        if args.samples > len(src_excs):
+            print(f"Error: --sample ({args.samples}) is greater than the number of available SourceCodeException examples ({len(src_excs)}).")
+            sys.exit(1)
         seed(args.seed)
         samp = sample(src_excs, args.samples)
         src_code_excs = Counter()
