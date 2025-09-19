@@ -33,7 +33,7 @@ if __name__ == "__main__":
         # Each obj is a dictionary representing a repository
             if obj['func_name']:
                 cnts[stats_names[0]] += 1
-                # counts newline characts just line `wc -l`
+                # counts newline characters just like `wc -l`
                 cnts[stats_names[1]] += obj.get('original_string', "\n").count("\n") or 0
                 cnts[stats_names[2]] += len(obj.get("docstring_tokens", [""])) or 0
                 cnts[stats_names[3]] += len(obj.get("code_tokens", [""])) or 0
