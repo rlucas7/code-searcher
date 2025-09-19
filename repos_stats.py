@@ -24,7 +24,7 @@ if __name__ == "__main__":
     args = repos_stats_parser.parse_args()
     # NOTE: these names are referenced by index later so if you add new ones add at end of list
     # and for each new statistic calculated, add a new entry to the stats dict below inside the
-    # context manager which lookps of the indexed functions in the repo
+    # context manager which loops over the indexed functions in the repo
     stats_names = ["total_funcs", "total_lines_of_code", "total_docstring_tokens", "total_code_tokens"]
     stats = {name: 0 for name in stats_names}
     cnts = Counter(stats)
