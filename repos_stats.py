@@ -1,9 +1,10 @@
 """
 This module is intended to gather and analyze statistics from code repositories.
-The code assumes the existence of repositories in jsonl format with the following fields:
-- func_name: The name of the repository.
-- 
-...
+The code assumes the existence of repositories in JSONL format, where each line is a JSON object with the following fields:
+- func_name: The name of the function.
+- original_string: The original source code of the function as a string.
+- docstring_tokens: A list of tokens from the function's docstring.
+- code_tokens: A list of tokens from the function's code (excluding the docstring).
 """
 
 import argparse
