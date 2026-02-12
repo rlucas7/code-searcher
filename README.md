@@ -1,23 +1,24 @@
 # Purpose
 
-This repository houses the code used for the manuscript titled: <under-revise-&-resubmit>
+This repository houses the code used for the manuscript titled: [Which Programming Language and Model Work Best With
+LLM-as-a-Judge For Code Retrieval?](https://dl.acm.org/doi/10.1145/3767695.3769503)
 
-The readme here will be updated once a draft has found a good home.
-
-The repo contains a flash server, intended to be run on localhost and used to annotate relevant vs not relevance queries from
-indexed code repositories which are searched with human language in a traditional search bar.
+The repo contains a flask server that hosts a search app, supporting sparse and semantic search, and a binary relevance annotation workflow. The app is run on localhost and used to annotate relevant vs not relevant queries used to search
+indexed code repositories. The queries are written in english (human) language in a traditional search bar.
 
 Relevance annotations are also generated via LLM models, both open source and commercially proprietary models are compared.
 The methods are compared across several popular programming languages (C, Java, Javscript, Go, Python), on repositories
 which share a common theme-implementation of data structures.
 
-Retrieval methods compared include bm25 and vector search methods.
-The vector search methods require sqlite3 using the sqlite-vec sqlite database extension.
-The next section describes the installation of sqlite3 and the database extension, after which 
-the application setup is described.
-
 Comparison across retrieval methods and programming languages allow us to determine whether
 there are affinities between LLM relevance annotators and programming languages as well as retrieval methods. 
+Retrieval methods compared include bm25 and multiple transformer based vector search methods.
+
+The vector search methods require sqlite3 using the [sqlite-vec](https://github.com/asg017/sqlite-vec) extension.
+The next section of the readme describes the installation of sqlite3 and the custom extension.
+This has been tested on intel and m4 mac laptops and works in both settings.
+This sqlite3 with custom extension must be installed for the rest of the application to work.
+All dense embeddings of code functions and all annotations are stored in sqlite by the application.
 
 # Installation Prereqs
 
